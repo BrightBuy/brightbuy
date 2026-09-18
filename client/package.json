@@ -1,0 +1,20 @@
+{
+  "name": "@brightbuy/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@brightbuy/contracts": "*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

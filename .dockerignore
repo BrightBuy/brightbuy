@@ -1,0 +1,18 @@
+# Dependencies and generated output
+**/node_modules
+**/dist
+**/coverage
+**/*.log
+.git
+
+# Keep local configuration out of image layers at every directory level.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Personal IDE workspaces and temporary local tooling
+**/*.code-workspace
+**/.idea
+**/.tooling
+**/.DS_Store
+**/Thumbs.db

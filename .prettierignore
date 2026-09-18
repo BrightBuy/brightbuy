@@ -1,0 +1,14 @@
+node_modules/
+**/dist/
+package-lock.json
+
+# Never rewrite local environment files or personal workspaces.
+**/.env
+**/.env.*
+!**/.env.example
+**/*.code-workspace
+**/.idea/
+**/.tooling/
+
+# Applied migrations must remain unchanged.
+server/db/*.sql

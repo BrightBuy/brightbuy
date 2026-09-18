@@ -18,3 +18,7 @@ coverage/
 # Operating system files
 .DS_Store
 Thumbs.db
+# Personal IDE workspaces and temporary local tooling
+*.code-workspace
+.idea/
+.tooling/
