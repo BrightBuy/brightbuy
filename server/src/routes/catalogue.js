@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 export function createCatalogueRoutes(db) {
   const router = Router();
+
   router.get('/products', async (req, res) => {
     const [products] = await db.query('SELECT id, name, description FROM products ORDER BY id');
     const [variants] = await db.query(
@@ -13,5 +14,18 @@ export function createCatalogueRoutes(db) {
     }));
     res.json({ data });
   });
+
+  router.get('/categories', async (req, res) => {
+    const [categories] = await db.query(
+      'SELECT id, name, description FROM categories ORDER BY name ASC',
+    );
+    res.json({ data: categories || [] });
+  });
+
+  router.get('/attributes', async (req, res) => {
+    const [attributes] = await db.query('SELECT id, name FROM attributes ORDER BY name ASC');
+    res.json({ data: attributes || [] });
+  });
+
   return router;
 }

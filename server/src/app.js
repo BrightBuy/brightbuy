@@ -4,6 +4,7 @@ import { ApiError, errorHandler } from './errors.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { createCatalogueRoutes } from './routes/catalogue.js';
+import { createCatalogueAdminRoutes } from './routes/catalogue-admin.js';
 import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
 
@@ -31,6 +32,7 @@ export function createApp(db, secret) {
   });
   app.use('/api', createAuthRoutes(db, secret, auth));
   app.use('/api', createCatalogueRoutes(db));
+  app.use('/api', createCatalogueAdminRoutes(db, auth));
   app.use('/api', createAccountRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
   // Error middleware must be last so every route uses the same error format.
