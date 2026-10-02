@@ -1,7 +1,14 @@
 import { Router } from 'express';
 import { ApiError, positiveId } from '../errors.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { computeCombinationKey, fetchFullProduct } from '../services/catalogue.js';
+import {
+  computeCombinationKey,
+  fetchFullProduct,
+  withTransaction,
+  setDefaultVariant,
+  setProductActive,
+  setVariantActive,
+} from '../services/catalogue.js';
 import { parseMoney, formatMoneyUnits } from '../utils/money.js';
 
 function validateAllowedKeys(body, allowedKeys) {
@@ -380,122 +387,134 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
   // PATCH /admin/products/:id
   router.patch('/admin/products/:id', requireAuthentication, requireAdmin, async (req, res) => {
     const id = positiveId(req.params.id);
-    validateAllowedKeys(req.body, ['sku', 'name', 'description', 'brand', 'categoryIds']);
+    validateAllowedKeys(req.body, ['sku', 'name', 'description', 'brand', 'categoryIds', 'isActive']);
 
-    const [products] = await db.execute(
-      'SELECT id, sku, name, description, brand, is_active AS isActive FROM products WHERE id = ?',
-      [id],
-    );
-    if (!products || !products[0]) {
-      throw new ApiError(404, 'NOT_FOUND', 'Resource not found.');
-    }
-    const current = products[0];
+    await withTransaction(db, async (conn) => {
+      const [products] = await conn.execute(
+        'SELECT id, sku, name, description, brand, is_active AS isActive FROM products WHERE id = ? FOR UPDATE',
+        [id],
+      );
+      if (!products || !products[0]) {
+        throw new ApiError(404, 'NOT_FOUND', 'Resource not found.');
+      }
+      const current = products[0];
 
-    let updatedSku = current.sku;
-    if (req.body.sku !== undefined) {
-      if (typeof req.body.sku !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be a string.');
-      }
-      const trimmed = req.body.sku.trim().toUpperCase();
-      if (!trimmed || trimmed.length > 60) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be between 1 and 60 characters.');
-      }
-      if (trimmed !== current.sku) {
-        const [duplicate] = await db.execute('SELECT id FROM products WHERE sku = ? AND id != ?', [
-          trimmed,
-          id,
-        ]);
-        if (duplicate && duplicate.length > 0) {
-          throw new ApiError(409, 'SKU_EXISTS', 'A product with this SKU already exists.');
+      let updatedSku = current.sku;
+      if (req.body.sku !== undefined) {
+        if (typeof req.body.sku !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be a string.');
         }
+        const trimmed = req.body.sku.trim().toUpperCase();
+        if (!trimmed || trimmed.length > 60) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be between 1 and 60 characters.');
+        }
+        if (trimmed !== current.sku) {
+          const [duplicate] = await conn.execute(
+            'SELECT id FROM products WHERE sku = ? AND id != ?',
+            [trimmed, id],
+          );
+          if (duplicate && duplicate.length > 0) {
+            throw new ApiError(409, 'SKU_EXISTS', 'A product with this SKU already exists.');
+          }
+        }
+        updatedSku = trimmed;
       }
-      updatedSku = trimmed;
-    }
 
-    let updatedName = current.name;
-    if (req.body.name !== undefined) {
-      if (typeof req.body.name !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be a string.');
+      let updatedName = current.name;
+      if (req.body.name !== undefined) {
+        if (typeof req.body.name !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be a string.');
+        }
+        const trimmed = req.body.name.trim();
+        if (!trimmed || trimmed.length > 150) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be between 1 and 150 characters.');
+        }
+        updatedName = trimmed;
       }
-      const trimmed = req.body.name.trim();
-      if (!trimmed || trimmed.length > 150) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be between 1 and 150 characters.');
-      }
-      updatedName = trimmed;
-    }
 
-    let updatedDescription = current.description;
-    if (req.body.description !== undefined) {
-      if (typeof req.body.description !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Description must be a string.');
+      let updatedDescription = current.description;
+      if (req.body.description !== undefined) {
+        if (typeof req.body.description !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Description must be a string.');
+        }
+        const trimmed = req.body.description.trim();
+        if (trimmed.length > 5000) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Description cannot exceed 5000 characters.');
+        }
+        updatedDescription = trimmed;
       }
-      const trimmed = req.body.description.trim();
-      if (trimmed.length > 5000) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Description cannot exceed 5000 characters.');
-      }
-      updatedDescription = trimmed;
-    }
 
-    let updatedBrand = current.brand;
-    if (req.body.brand !== undefined) {
-      if (typeof req.body.brand !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Brand must be a string.');
+      let updatedBrand = current.brand;
+      if (req.body.brand !== undefined) {
+        if (typeof req.body.brand !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Brand must be a string.');
+        }
+        const trimmed = req.body.brand.trim();
+        if (trimmed.length > 100) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Brand cannot exceed 100 characters.');
+        }
+        updatedBrand = trimmed;
       }
-      const trimmed = req.body.brand.trim();
-      if (trimmed.length > 100) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Brand cannot exceed 100 characters.');
-      }
-      updatedBrand = trimmed;
-    }
 
-    if (req.body.categoryIds !== undefined) {
-      if (!Array.isArray(req.body.categoryIds)) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'categoryIds must be an array.');
-      }
-      if (current.isActive && req.body.categoryIds.length === 0) {
-        throw new ApiError(
-          409,
-          'CATEGORY_REQUIRED',
-          'An active product must belong to at least one category.',
-        );
-      }
-      const cleanCategoryIds = [];
-      const seenCatIds = new Set();
-      for (const cid of req.body.categoryIds) {
-        const numId = Number(cid);
-        if (!Number.isSafeInteger(numId) || numId <= 0) {
+      const willBeActive =
+        req.body.isActive !== undefined ? Boolean(req.body.isActive) : Boolean(current.isActive);
+
+      if (req.body.categoryIds !== undefined) {
+        if (!Array.isArray(req.body.categoryIds)) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'categoryIds must be an array.');
+        }
+        if (willBeActive && req.body.categoryIds.length === 0) {
           throw new ApiError(
-            400,
-            'VALIDATION_ERROR',
-            'Each categoryId must be a positive integer.',
+            409,
+            'CATEGORY_REQUIRED',
+            'An active product must belong to at least one category.',
           );
         }
-        if (seenCatIds.has(numId)) {
-          throw new ApiError(400, 'VALIDATION_ERROR', `Duplicate categoryId: ${numId}`);
+        const cleanCategoryIds = [];
+        const seenCatIds = new Set();
+        for (const cid of req.body.categoryIds) {
+          const numId = Number(cid);
+          if (!Number.isSafeInteger(numId) || numId <= 0) {
+            throw new ApiError(
+              400,
+              'VALIDATION_ERROR',
+              'Each categoryId must be a positive integer.',
+            );
+          }
+          if (seenCatIds.has(numId)) {
+            throw new ApiError(400, 'VALIDATION_ERROR', `Duplicate categoryId: ${numId}`);
+          }
+          seenCatIds.add(numId);
+          cleanCategoryIds.push(numId);
         }
-        seenCatIds.add(numId);
-        cleanCategoryIds.push(numId);
-      }
-      for (const cid of cleanCategoryIds) {
-        const [cat] = await db.execute('SELECT id FROM categories WHERE id = ?', [cid]);
-        if (!cat || !cat.length) {
-          throw new ApiError(404, 'NOT_FOUND', `Referenced category ${cid} not found.`);
+        for (const cid of cleanCategoryIds) {
+          const [cat] = await conn.execute('SELECT id FROM categories WHERE id = ?', [cid]);
+          if (!cat || !cat.length) {
+            throw new ApiError(404, 'NOT_FOUND', `Referenced category ${cid} not found.`);
+          }
+        }
+
+        await conn.execute('DELETE FROM product_categories WHERE product_id = ?', [id]);
+        for (const cid of cleanCategoryIds) {
+          await conn.execute(
+            'INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)',
+            [id, cid],
+          );
         }
       }
 
-      await db.execute('DELETE FROM product_categories WHERE product_id = ?', [id]);
-      for (const cid of cleanCategoryIds) {
-        await db.execute('INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)', [
-          id,
-          cid,
-        ]);
+      if (req.body.isActive !== undefined) {
+        if (typeof req.body.isActive !== 'boolean') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'isActive must be a boolean.');
+        }
+        await setProductActive(conn, id, req.body.isActive);
       }
-    }
 
-    await db.execute(
-      'UPDATE products SET sku = ?, name = ?, description = ?, brand = ? WHERE id = ?',
-      [updatedSku, updatedName, updatedDescription, updatedBrand, id],
-    );
+      await conn.execute(
+        'UPDATE products SET sku = ?, name = ?, description = ?, brand = ? WHERE id = ?',
+        [updatedSku, updatedName, updatedDescription, updatedBrand, id],
+      );
+    });
 
     const fullProduct = await fetchFullProduct(db, id);
     res.json({ data: fullProduct });
@@ -597,102 +616,208 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
   // PATCH /admin/variants/:id
   router.patch('/admin/variants/:id', requireAuthentication, requireAdmin, async (req, res) => {
     const variantId = positiveId(req.params.id);
-    validateAllowedKeys(req.body, ['sku', 'name', 'price', 'attributeValues']);
+    validateAllowedKeys(req.body, ['sku', 'name', 'price', 'attributeValues', 'isActive']);
 
-    const [variants] = await db.execute(
-      'SELECT id, product_id AS productId, sku, name, price, combination_key AS combinationKey FROM variants WHERE id = ?',
-      [variantId],
-    );
-    if (!variants || !variants[0]) {
-      throw new ApiError(404, 'NOT_FOUND', 'Resource not found.');
-    }
-    const current = variants[0];
-    const productId = current.productId;
+    let productId;
+    await withTransaction(db, async (conn) => {
+      const [variants] = await conn.execute(
+        'SELECT id, product_id AS productId, sku, name, price, combination_key AS combinationKey FROM variants WHERE id = ?',
+        [variantId],
+      );
+      if (!variants || !variants[0]) {
+        throw new ApiError(404, 'NOT_FOUND', 'Resource not found.');
+      }
+      const current = variants[0];
+      productId = current.productId;
 
-    let updatedSku = current.sku;
-    if (req.body.sku !== undefined) {
-      if (typeof req.body.sku !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be a string.');
-      }
-      const trimmed = req.body.sku.trim().toUpperCase();
-      if (!trimmed || trimmed.length > 60) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be between 1 and 60 characters.');
-      }
-      if (trimmed !== current.sku) {
-        const [duplicate] = await db.execute('SELECT id FROM variants WHERE sku = ? AND id != ?', [
-          trimmed,
-          variantId,
-        ]);
-        if (duplicate && duplicate.length > 0) {
-          throw new ApiError(409, 'SKU_EXISTS', 'A variant with this SKU already exists.');
+      let updatedSku = current.sku;
+      if (req.body.sku !== undefined) {
+        if (typeof req.body.sku !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be a string.');
         }
+        const trimmed = req.body.sku.trim().toUpperCase();
+        if (!trimmed || trimmed.length > 60) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'SKU must be between 1 and 60 characters.');
+        }
+        if (trimmed !== current.sku) {
+          const [duplicate] = await conn.execute('SELECT id FROM variants WHERE sku = ? AND id != ?', [
+            trimmed,
+            variantId,
+          ]);
+          if (duplicate && duplicate.length > 0) {
+            throw new ApiError(409, 'SKU_EXISTS', 'A variant with this SKU already exists.');
+          }
+        }
+        updatedSku = trimmed;
       }
-      updatedSku = trimmed;
-    }
 
-    let updatedName = current.name;
-    if (req.body.name !== undefined) {
-      if (typeof req.body.name !== 'string') {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be a string.');
+      let updatedName = current.name;
+      if (req.body.name !== undefined) {
+        if (typeof req.body.name !== 'string') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be a string.');
+        }
+        const trimmed = req.body.name.trim();
+        if (!trimmed || trimmed.length > 100) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be between 1 and 100 characters.');
+        }
+        updatedName = trimmed;
       }
-      const trimmed = req.body.name.trim();
-      if (!trimmed || trimmed.length > 100) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Name must be between 1 and 100 characters.');
+
+      let updatedPrice = current.price;
+      if (req.body.price !== undefined) {
+        const priceUnits = parseMoney(req.body.price);
+        updatedPrice = formatMoneyUnits(priceUnits);
       }
-      updatedName = trimmed;
-    }
 
-    let updatedPrice = current.price;
-    if (req.body.price !== undefined) {
-      const priceUnits = parseMoney(req.body.price);
-      updatedPrice = formatMoneyUnits(priceUnits);
-    }
+      let updatedCombKey = current.combinationKey;
+      if (req.body.attributeValues !== undefined) {
+        const combinationKey = computeCombinationKey(req.body.attributeValues);
+        if (combinationKey !== current.combinationKey) {
+          const [duplicate] = await conn.execute(
+            'SELECT id FROM variants WHERE product_id = ? AND combination_key = ? AND id != ?',
+            [productId, combinationKey, variantId],
+          );
+          if (duplicate && duplicate.length > 0) {
+            throw new ApiError(
+              409,
+              'VARIANT_COMBINATION_EXISTS',
+              'A variant with this attribute combination already exists for this product.',
+            );
+          }
+        }
+        updatedCombKey = combinationKey;
 
-    let updatedCombKey = current.combinationKey;
-    if (req.body.attributeValues !== undefined) {
-      const combinationKey = computeCombinationKey(req.body.attributeValues);
-      if (combinationKey !== current.combinationKey) {
-        const [duplicate] = await db.execute(
-          'SELECT id FROM variants WHERE product_id = ? AND combination_key = ? AND id != ?',
-          [productId, combinationKey, variantId],
-        );
-        if (duplicate && duplicate.length > 0) {
-          throw new ApiError(
-            409,
-            'VARIANT_COMBINATION_EXISTS',
-            'A variant with this attribute combination already exists for this product.',
+        for (const attr of req.body.attributeValues) {
+          const [attrRow] = await conn.execute('SELECT id FROM attributes WHERE id = ?', [
+            attr.attributeId,
+          ]);
+          if (!attrRow || !attrRow[0]) {
+            throw new ApiError(404, 'NOT_FOUND', `Attribute ${attr.attributeId} not found.`);
+          }
+        }
+
+        await conn.execute('DELETE FROM variant_attribute_values WHERE variant_id = ?', [variantId]);
+        for (const attr of req.body.attributeValues) {
+          await conn.execute(
+            'INSERT INTO variant_attribute_values (variant_id, attribute_id, value) VALUES (?, ?, ?)',
+            [variantId, attr.attributeId, attr.value.trim()],
           );
         }
       }
-      updatedCombKey = combinationKey;
 
-      for (const attr of req.body.attributeValues) {
-        const [attrRow] = await db.execute('SELECT id FROM attributes WHERE id = ?', [
-          attr.attributeId,
-        ]);
-        if (!attrRow || !attrRow[0]) {
-          throw new ApiError(404, 'NOT_FOUND', `Attribute ${attr.attributeId} not found.`);
+      if (req.body.isActive !== undefined) {
+        if (typeof req.body.isActive !== 'boolean') {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'isActive must be a boolean.');
         }
+        await setVariantActive(conn, variantId, req.body.isActive);
       }
 
-      await db.execute('DELETE FROM variant_attribute_values WHERE variant_id = ?', [variantId]);
-      for (const attr of req.body.attributeValues) {
-        await db.execute(
-          'INSERT INTO variant_attribute_values (variant_id, attribute_id, value) VALUES (?, ?, ?)',
-          [variantId, attr.attributeId, attr.value.trim()],
-        );
-      }
-    }
-
-    await db.execute(
-      'UPDATE variants SET sku = ?, name = ?, price = ?, combination_key = ? WHERE id = ?',
-      [updatedSku, updatedName, updatedPrice, updatedCombKey, variantId],
-    );
+      await conn.execute(
+        'UPDATE variants SET sku = ?, name = ?, price = ?, combination_key = ? WHERE id = ?',
+        [updatedSku, updatedName, updatedPrice, updatedCombKey, variantId],
+      );
+    });
 
     const fullProduct = await fetchFullProduct(db, productId);
     const updatedVariant = fullProduct?.variants?.find((v) => v.id === variantId);
     res.json({ data: updatedVariant });
   });
+
+  // ---------------------------------------------------------------------------
+  // Default variant & Activation Controls
+  // ---------------------------------------------------------------------------
+
+  // PUT /admin/products/:id/default-variant and PATCH /admin/products/:id/default-variant
+  const handleSetDefaultVariant = async (req, res) => {
+    const id = positiveId(req.params.id);
+    validateAllowedKeys(req.body, ['variantId']);
+    const variantId = positiveId(req.body.variantId);
+
+    await withTransaction(db, async (conn) => {
+      await setDefaultVariant(conn, id, variantId);
+    });
+
+    const fullProduct = await fetchFullProduct(db, id);
+    res.json({ data: fullProduct });
+  };
+  router.put(
+    '/admin/products/:id/default-variant',
+    requireAuthentication,
+    requireAdmin,
+    handleSetDefaultVariant,
+  );
+  router.patch(
+    '/admin/products/:id/default-variant',
+    requireAuthentication,
+    requireAdmin,
+    handleSetDefaultVariant,
+  );
+
+  // PATCH /admin/products/:id/active and PUT /admin/products/:id/active
+  const handleSetProductActive = async (req, res) => {
+    const id = positiveId(req.params.id);
+    validateAllowedKeys(req.body, ['isActive']);
+    if (typeof req.body.isActive !== 'boolean') {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'isActive must be a boolean.');
+    }
+
+    await withTransaction(db, async (conn) => {
+      await setProductActive(conn, id, req.body.isActive);
+    });
+
+    const fullProduct = await fetchFullProduct(db, id);
+    res.json({ data: fullProduct });
+  };
+  router.patch(
+    '/admin/products/:id/active',
+    requireAuthentication,
+    requireAdmin,
+    handleSetProductActive,
+  );
+  router.put(
+    '/admin/products/:id/active',
+    requireAuthentication,
+    requireAdmin,
+    handleSetProductActive,
+  );
+
+  // PATCH /admin/variants/:id/active and PUT /admin/variants/:id/active
+  const handleSetVariantActive = async (req, res) => {
+    const variantId = positiveId(req.params.id);
+    validateAllowedKeys(req.body, ['isActive']);
+    if (typeof req.body.isActive !== 'boolean') {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'isActive must be a boolean.');
+    }
+
+    let productId;
+    await withTransaction(db, async (conn) => {
+      const [variants] = await conn.execute(
+        'SELECT product_id AS productId FROM variants WHERE id = ?',
+        [variantId],
+      );
+      if (!variants || !variants[0]) {
+        throw new ApiError(404, 'NOT_FOUND', 'Resource not found.');
+      }
+      productId = variants[0].productId;
+      await setVariantActive(conn, variantId, req.body.isActive);
+    });
+
+    const fullProduct = await fetchFullProduct(db, productId);
+    const updatedVariant = fullProduct?.variants?.find((v) => v.id === variantId);
+    res.json({ data: updatedVariant });
+  };
+  router.patch(
+    '/admin/variants/:id/active',
+    requireAuthentication,
+    requireAdmin,
+    handleSetVariantActive,
+  );
+  router.put(
+    '/admin/variants/:id/active',
+    requireAuthentication,
+    requireAdmin,
+    handleSetVariantActive,
+  );
 
   return router;
 }

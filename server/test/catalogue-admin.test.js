@@ -24,6 +24,19 @@ let nextProductId = 1;
 let nextVariantId = 1;
 
 const db = {
+  async getConnection() {
+    return {
+      query: (sql, params) => db.query(sql, params),
+      execute: (sql, params) => db.execute(sql, params),
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
+      release: () => {},
+    };
+  },
+  async beginTransaction() {},
+  async commit() {},
+  async rollback() {},
   async query(sql) {
     if (sql.includes('FROM categories')) {
       return [[...categories].sort((a, b) => a.name.localeCompare(b.name))];
@@ -123,6 +136,11 @@ const db = {
     }
 
     // Product Categories queries
+    if (sql.includes('SELECT category_id FROM product_categories WHERE product_id = ?')) {
+      const [productId] = params;
+      const list = productCategories.filter((pc) => pc.productId === Number(productId));
+      return [list.map((pc) => ({ category_id: pc.categoryId }))];
+    }
     if (sql.includes('INSERT INTO product_categories')) {
       const [productId, categoryId] = params;
       productCategories.push({ productId: Number(productId), categoryId: Number(categoryId) });
@@ -173,6 +191,14 @@ const db = {
       };
       products.push(item);
       return [{ insertId: id }];
+    }
+    if (sql.includes('UPDATE products SET is_active =')) {
+      const [id] = params;
+      const found = products.find((p) => p.id === Number(id));
+      if (found) {
+        found.is_active = sql.includes('is_active = 1') ? 1 : 0;
+      }
+      return [{ affectedRows: found ? 1 : 0 }];
     }
     if (sql.includes('UPDATE products SET')) {
       const [sku, name, description, brand, id] = params;
@@ -240,7 +266,15 @@ const db = {
       const found = variants.find((v) => v.id === Number(id));
       return [
         found
-          ? [{ ...found, productId: found.product_id, combinationKey: found.combination_key }]
+          ? [
+              {
+                ...found,
+                productId: found.product_id,
+                combinationKey: found.combination_key,
+                isActive: found.is_active,
+                isDefault: found.is_default,
+              },
+            ]
           : [],
       ];
     }
@@ -260,6 +294,27 @@ const db = {
       };
       variants.push(item);
       return [{ insertId: id }];
+    }
+    if (sql.includes('UPDATE variants SET is_default = 0 WHERE product_id = ? AND is_default = 1')) {
+      const [productId] = params;
+      for (const v of variants) {
+        if (v.product_id === Number(productId) && v.is_default === 1) {
+          v.is_default = 0;
+        }
+      }
+      return [{ affectedRows: 1 }];
+    }
+    if (sql.includes('UPDATE variants SET is_default = 1 WHERE id = ?')) {
+      const [id] = params;
+      const found = variants.find((v) => v.id === Number(id));
+      if (found) found.is_default = 1;
+      return [{ affectedRows: found ? 1 : 0 }];
+    }
+    if (sql.includes('UPDATE variants SET is_active = ? WHERE id = ?')) {
+      const [isActive, id] = params;
+      const found = variants.find((v) => v.id === Number(id));
+      if (found) found.is_active = Number(isActive);
+      return [{ affectedRows: found ? 1 : 0 }];
     }
     if (sql.includes('UPDATE variants SET sku = ?')) {
       const [sku, name, price, combKey, id] = params;
@@ -751,4 +806,270 @@ test('admin reads include inactive draft products and detail', async () => {
   const detail = await request(`/api/admin/products/${list.body.data[0].id}`, { id: 2 });
   assert.equal(detail.status, 200);
   assert.equal(detail.body.data.name, 'Draft 1');
+});
+
+// -----------------------------------------------------------------------------
+// Default Variant Selection & Activation Rules (Commit 8)
+// -----------------------------------------------------------------------------
+
+test('admin can switch default variant atomically', async () => {
+  const prod = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'RADIO-1', name: 'FM Radio', categoryIds: [1] }),
+  });
+  const prodId = prod.body.data.id;
+
+  const v1 = await request(`/api/admin/products/${prodId}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'RADIO-BLACK', name: 'Black', price: '29.99' }),
+  });
+  const v2 = await request(`/api/admin/products/${prodId}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({
+      sku: 'RADIO-WOOD',
+      name: 'Wood',
+      price: '34.99',
+      attributeValues: [{ attributeId: 1, value: 'Wood' }],
+    }),
+  });
+
+  assert.equal(v1.body.data.isDefault, 1);
+  assert.equal(v2.body.data.isDefault, 0);
+
+  // Switch default to v2
+  const switched = await request(`/api/admin/products/${prodId}/default-variant`, {
+    id: 2,
+    method: 'PUT',
+    body: JSON.stringify({ variantId: v2.body.data.id }),
+  });
+  assert.equal(switched.status, 200);
+
+  const updatedV1 = switched.body.data.variants.find((v) => v.id === v1.body.data.id);
+  const updatedV2 = switched.body.data.variants.find((v) => v.id === v2.body.data.id);
+  assert.equal(updatedV1.isDefault, 0);
+  assert.equal(updatedV2.isDefault, 1);
+});
+
+test('switching default variant rejects non-existent or inactive variants', async () => {
+  const prod = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'LAMP-1', name: 'Desk Lamp', categoryIds: [1] }),
+  });
+  const prodId = prod.body.data.id;
+
+  const v1 = await request(`/api/admin/products/${prodId}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'LAMP-WHITE', name: 'White', price: '19.99' }),
+  });
+  const v2 = await request(`/api/admin/products/${prodId}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({
+      sku: 'LAMP-BLACK',
+      name: 'Black',
+      price: '19.99',
+      attributeValues: [{ attributeId: 1, value: 'Black' }],
+    }),
+  });
+
+  // Deactivate v2 (product is draft so deactivating is allowed)
+  await request(`/api/admin/variants/${v2.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+
+  // Attempting to set inactive v2 as default must fail (409)
+  const setInactive = await request(`/api/admin/products/${prodId}/default-variant`, {
+    id: 2,
+    method: 'PUT',
+    body: JSON.stringify({ variantId: v2.body.data.id }),
+  });
+  assert.equal(setInactive.status, 409);
+  assert.equal(setInactive.body.error.code, 'DEFAULT_VARIANT_REQUIRED');
+
+  // Attempting to set non-existent variant as default must fail (404)
+  const setMissing = await request(`/api/admin/products/${prodId}/default-variant`, {
+    id: 2,
+    method: 'PUT',
+    body: JSON.stringify({ variantId: 9999 }),
+  });
+  assert.equal(setMissing.status, 404);
+});
+
+test('product activation readiness enforces categories, variants, and default variant', async () => {
+  // 1. Product without categories cannot be activated
+  const pNoCat = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'NOCAT-1', name: 'No Cat Product' }),
+  });
+  const actNoCat = await request(`/api/admin/products/${pNoCat.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+  assert.equal(actNoCat.status, 409);
+  assert.equal(actNoCat.body.error.code, 'CATEGORY_REQUIRED');
+
+  // 2. Product with category but no variants cannot be activated
+  const pNoVar = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'NOVAR-1', name: 'No Var Product', categoryIds: [1] }),
+  });
+  const actNoVar = await request(`/api/admin/products/${pNoVar.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+  assert.equal(actNoVar.status, 409);
+  assert.equal(actNoVar.body.error.code, 'PRODUCT_NOT_READY');
+
+  // 3. Product with category and inactive default variant cannot be activated
+  const pWithVar = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'READY-1', name: 'Ready Product', categoryIds: [1] }),
+  });
+  const v = await request(`/api/admin/products/${pWithVar.body.data.id}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'READY-1-STD', name: 'Standard', price: '15.00' }),
+  });
+  // Deactivate the only variant while still draft
+  await request(`/api/admin/variants/${v.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+  const actInactiveVar = await request(`/api/admin/products/${pWithVar.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+  assert.equal(actInactiveVar.status, 409);
+  assert.equal(actInactiveVar.body.error.code, 'PRODUCT_NOT_READY');
+});
+
+test('admin can activate and deactivate a ready product', async () => {
+  const prod = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'ACTIVE-TEST', name: 'Active Test', categoryIds: [1] }),
+  });
+  await request(`/api/admin/products/${prod.body.data.id}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'ACTIVE-TEST-V1', name: 'V1', price: '20.00' }),
+  });
+
+  // Activate
+  const activated = await request(`/api/admin/products/${prod.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+  assert.equal(activated.status, 200);
+  assert.equal(activated.body.data.isActive, true);
+
+  // Deactivate
+  const deactivated = await request(`/api/admin/products/${prod.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+  assert.equal(deactivated.status, 200);
+  assert.equal(deactivated.body.data.isActive, false);
+});
+
+test('cannot deactivate default or only active variant of an active product', async () => {
+  const prod = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'DEACT-GUARD', name: 'Deactivate Guard', categoryIds: [1] }),
+  });
+  const v1 = await request(`/api/admin/products/${prod.body.data.id}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'DEACT-V1', name: 'V1', price: '10.00' }),
+  });
+  const v2 = await request(`/api/admin/products/${prod.body.data.id}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({
+      sku: 'DEACT-V2',
+      name: 'V2',
+      price: '12.00',
+      attributeValues: [{ attributeId: 1, value: 'V2' }],
+    }),
+  });
+
+  // Activate product
+  await request(`/api/admin/products/${prod.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+
+  // Attempting to deactivate default variant v1 while product is active must fail (409)
+  const deactDefault = await request(`/api/admin/variants/${v1.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+  assert.equal(deactDefault.status, 409);
+  assert.equal(deactDefault.body.error.code, 'DEFAULT_VARIANT_REQUIRED');
+
+  // Deactivating non-default v2 succeeds
+  const deactV2 = await request(`/api/admin/variants/${v2.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+  assert.equal(deactV2.status, 200);
+  assert.equal(deactV2.body.data.isActive, 0);
+
+  // Now v1 is the ONLY active variant; attempting to deactivate it must fail
+  const deactOnlyActive = await request(`/api/admin/variants/${v1.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: false }),
+  });
+  assert.equal(deactOnlyActive.status, 409);
+  assert.equal(deactOnlyActive.body.error.code, 'DEFAULT_VARIANT_REQUIRED');
+});
+
+test('cannot remove last category of an active product', async () => {
+  const prod = await request('/api/admin/products', {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'CAT-GUARD', name: 'Category Guard', categoryIds: [1] }),
+  });
+  await request(`/api/admin/products/${prod.body.data.id}/variants`, {
+    id: 2,
+    method: 'POST',
+    body: JSON.stringify({ sku: 'CAT-GUARD-V1', name: 'V1', price: '10.00' }),
+  });
+
+  // Activate product
+  await request(`/api/admin/products/${prod.body.data.id}/active`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ isActive: true }),
+  });
+
+  // Attempting to strip categories must fail (409)
+  const stripCat = await request(`/api/admin/products/${prod.body.data.id}`, {
+    id: 2,
+    method: 'PATCH',
+    body: JSON.stringify({ categoryIds: [] }),
+  });
+  assert.equal(stripCat.status, 409);
+  assert.equal(stripCat.body.error.code, 'CATEGORY_REQUIRED');
 });
