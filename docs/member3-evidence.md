@@ -33,6 +33,14 @@
 ## Commit 04 — Turn a cart into an order
 
 - feature/checkout-payments
+- 4f3a57a5666fc0fd62e2dc084117a95584c00e54
+
+| `docker compose exec api node --test server/test/checkout-domain.test.js server/test/checkout-regression.test.js server/test/checkout-lifecycle.test.js server/test/checkout-workflow.test.js` | Passed |
+
+
+## Commit 05 — Reverse an eligible order safely
+
+- feature/checkout-payments
 - 
 
 | `docker compose exec api node --test server/test/checkout-domain.test.js server/test/checkout-regression.test.js server/test/checkout-lifecycle.test.js server/test/checkout-workflow.test.js` | Passed |
