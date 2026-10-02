@@ -1,14 +1,9 @@
 # Member 3 — Implementation Evidence
 
-## Baseline — Before Checkout Development
+## Commit 01 — Record the starting point and team contract
 
-### Purpose
-Check that the existing BrightBuy foundation works before I add
-checkout, payments and cancellation.
-
-### Environment
 - Branch: feature/checkout-payments
-- Starting commit: bf3170c927fbaee125e50b86bb75edc3da03054c
+- commit_id: 3fe7957227ae8b506f19cd4add937f215a0573ec
 
 
 ### Checks performed
@@ -22,3 +17,14 @@ checkout, payments and cancellation.
 | Smoke checks | `docker compose exec api npm run smoke` | Passed — all smoke checks completed |
 | Customer login | Signed in using the supplied customer account | Passed — login succeeded |
 | Order viewing | Opened the customer's order list and an order | Passed — existing order details displayed |
+
+
+## Commit 02 — Build the rules and transaction tools
+
+- Branch: feature/checkout-payments
+- commit_id: 
+
+### Checks performed
+
+`docker compose exec api node --test server/test/checkout-domain.test.js`
+Passed
