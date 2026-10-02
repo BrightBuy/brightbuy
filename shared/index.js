@@ -11,6 +11,7 @@ export const ORDER_TRANSITIONS = Object.freeze({
   delivered: Object.freeze([]),
   collected: Object.freeze([]),
   cancelled: Object.freeze([]),
+  backordered: Object.freeze(['confirmed','cancelled']),
 });
 
 export function nextStatuses(status, fulfillment) {
