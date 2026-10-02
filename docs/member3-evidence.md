@@ -25,6 +25,14 @@
 ## Commit 03 — Define trustworthy inputs and order responses
 
 - feature/checkout-payments
+- d121ec3b11fd02b5371cf3cc2e255d25879005fb
+
+|`docker compose exec api  node --test server/test/checkout-domain.test.js server/test/checkout-regression.test.js server/test/checkout-lifecycle.test.js` | Passed |
+
+
+## Commit 04 — Turn a cart into an order
+
+- feature/checkout-payments
 - 
 
-|`docker compose exec api  node --test server/test/checkout-domain.test.js server/test/checkout-regression.test.js server/test/checkout-lifecycle.test.js` | Passed
+| `docker compose exec api node --test server/test/checkout-domain.test.js server/test/checkout-regression.test.js server/test/checkout-lifecycle.test.js server/test/checkout-workflow.test.js` | Passed |
