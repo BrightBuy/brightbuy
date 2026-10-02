@@ -129,6 +129,123 @@ export async function fetchFullProduct(connection, productId) {
 }
 
 /**
+ * Fetches a single public product by ID, including its categories and active variants.
+ * Returns null if the product is not found or is inactive.
+ */
+export async function fetchPublicProduct(connection, productId) {
+  const [products] = await connection.execute(
+    `SELECT id, sku, name, description, brand, currency
+     FROM products WHERE id = ? AND is_active = 1`,
+    [productId],
+  );
+  if (!products || !products[0]) return null;
+
+  const product = products[0];
+
+  // Fetch categories
+  const [categories] = await connection.execute(
+    `SELECT c.id, c.name, c.description
+     FROM categories c
+     JOIN product_categories pc ON pc.category_id = c.id
+     WHERE pc.product_id = ?
+     ORDER BY c.name ASC`,
+    [productId],
+  );
+
+  // Fetch active variants
+  const [variants] = await connection.execute(
+    `SELECT id, product_id AS productId, sku, name, price, stock,
+            is_default AS isDefault
+     FROM variants
+     WHERE product_id = ? AND is_active = 1
+     ORDER BY is_default DESC, id ASC`,
+    [productId],
+  );
+
+  for (const variant of variants) {
+    const [attrValues] = await connection.execute(
+      `SELECT a.id AS attributeId, a.name, vav.value
+       FROM variant_attribute_values vav
+       JOIN attributes a ON a.id = vav.attribute_id
+       WHERE vav.variant_id = ?
+       ORDER BY a.id ASC`,
+      [variant.id],
+    );
+    variant.attributeValues = attrValues || [];
+    variant.price = formatMoneyUnits(parseMoney(String(variant.price)));
+    variant.isDefault = Number(variant.isDefault);
+  }
+
+  const defaultVariant = variants.find((v) => v.isDefault === 1) || variants[0] || null;
+
+  return {
+    ...product,
+    categories: categories || [],
+    defaultVariant,
+    variants: variants || [],
+  };
+}
+
+/**
+ * Fetches a paginated list of active products with optional search and category filters.
+ */
+export async function fetchPublicCatalogue(
+  connection,
+  { q, categoryId, page = 1, pageSize = 12 } = {},
+) {
+  const conditions = ['p.is_active = 1'];
+  const params = [];
+
+  let joinClause = '';
+  if (categoryId) {
+    joinClause = 'JOIN product_categories pc ON pc.product_id = p.id';
+    conditions.push('pc.category_id = ?');
+    params.push(categoryId);
+  }
+
+  if (q) {
+    conditions.push('(p.name LIKE ? OR p.brand LIKE ?)');
+    const searchTerm = `%${q}%`;
+    params.push(searchTerm, searchTerm);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // Count total matching products
+  const countSql = `SELECT COUNT(DISTINCT p.id) AS total FROM products p ${joinClause} ${whereClause}`;
+  const [countResult] = await connection.execute(countSql, params);
+  const total = countResult[0]?.total || 0;
+
+  // Fetch matching product IDs with stable ordering
+  const offset = (page - 1) * pageSize;
+  const selectSql = `
+    SELECT DISTINCT p.id
+    FROM products p
+    ${joinClause}
+    ${whereClause}
+    ORDER BY p.id ASC
+    LIMIT ? OFFSET ?
+  `;
+  const [pagedProducts] = await connection.execute(selectSql, [...params, pageSize, offset]);
+
+  const items = [];
+  for (const p of pagedProducts || []) {
+    const full = await fetchPublicProduct(connection, p.id);
+    if (full) items.push(full);
+  }
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
+
+/**
  * Verifies that a product satisfies all readiness requirements before activation:
  * 1. Has at least 1 category
  * 2. Has at least 1 active variant
