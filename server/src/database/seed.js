@@ -1,4 +1,5 @@
 import { hashPassword } from '../password.js';
+import { reconcileLegacyCatalogue } from './reconcile.js';
 
 // Called inside a transaction. The marker prevents repeat runs from resetting
 // passwords, status changes or other records the team has already edited.
@@ -60,6 +61,10 @@ export async function seedDemoData(connection) {
       (2,1,3,'Travel Bottle','Sage / 750 ml',1,4200),
       (3,2,5,'Canvas Backpack','Sand / 20 L',1,6800),
       (4,3,2,'Everyday T-shirt','White / Large',1,2500)`);
+    await reconcileLegacyCatalogue(connection);
     await connection.execute('INSERT INTO schema_migrations (version) VALUES (?)', ['demo-v1']);
+  } else {
+    // Run reconciliation even when demo-v1 is already seeded to reconcile legacy products/variants
+    await reconcileLegacyCatalogue(connection);
   }
 }
