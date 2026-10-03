@@ -16,7 +16,7 @@ test('exact cents avoid floating point addition', () => {
 });
 test('money syntax is strict', () => {
   for (const value of [40, '1.2', '1e2', '-1.00', '1.001', '1,000.00']) {
-    assert.throws(() => parseMoney(value), TypeError);
+    assert.throws(() => parseMoney(value, { code: 'INVALID_PRICE' }),);
   }
 });
 test('maximum total accepted, overflowing total rejected', () => {
