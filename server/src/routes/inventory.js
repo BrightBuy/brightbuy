@@ -25,8 +25,7 @@ export function createInventoryRoutes(db, requireAuthentication) {
             threshold = parsed;
         }
 
-        //temp change p.is_active as active to 1 as active
-        //chaneg this after member 1 finish the his part
+
         let sql = `
             select 
                 v.id,
@@ -35,7 +34,7 @@ export function createInventoryRoutes(db, requireAuthentication) {
                 v.sku,
                 v.name as title,
                 v.stock,
-                true as active
+                p.is_active as active
             from variants v
             join products p on v.product_id = p.id`;
 
