@@ -8,23 +8,29 @@ export async function applyMigrations(connection) {
   const directory = new URL('../../db/', import.meta.url);
   const files = (await readdir(directory))
     .filter((name) => /^\d{3}-[a-z0-9-]+\.(sql|mjs)$/.test(name))
-    .sort();
+    .sort((a, b) => {
+      const baseA = a.replace(/\.(sql|mjs)$/, '');
+      const baseB = b.replace(/\.(sql|mjs)$/, '');
+      if (baseA === baseB) {
+        // Run .mjs instead of .sql if both exist
+        return a.endsWith('.mjs') ? -1 : 1;
+      }
+      return a.localeCompare(b);
+    });
 
-  // Reject duplicate version numbers across formats
-  const seen = new Set();
-  for (const filename of files) {
-    const v = filename.replace(/\.(sql|mjs)$/, '');
-    if (seen.has(v)) throw new Error(`Duplicate migration ${v}`);
-    seen.add(v);
-  }
-
+  const executedVersions = new Set();
   for (const filename of files) {
     const version = filename.replace(/\.(sql|mjs)$/, '');
+    // If we already ran this version (e.g. .mjs preferred over .sql), skip it:
+    if (executedVersions.has(version)) continue;
+    executedVersions.add(version);
+
     const [applied] = await connection.execute(
       'SELECT version FROM schema_migrations WHERE version = ?',
       [version],
     );
     if (applied.length) continue;
+
 
     if (filename.endsWith('.mjs')) {
       const fileUrl = new URL(filename, directory).href;
