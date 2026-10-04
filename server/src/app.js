@@ -6,6 +6,8 @@ import { createAuthRoutes } from './routes/auth.js';
 import { createCatalogueRoutes } from './routes/catalogue.js';
 import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
+import { createInventoryRoutes } from './routes/inventory.js';
+
 
 // App creation is separate from listen(): tests can use an isolated database.
 export function createApp(db, secret) {
@@ -33,6 +35,8 @@ export function createApp(db, secret) {
   app.use('/api', createCatalogueRoutes(db));
   app.use('/api', createAccountRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
+  app.use('/api', createInventoryRoutes(db, auth));
+
   // Error middleware must be last so every route uses the same error format.
   app.use((req, res, next) => next(new ApiError(404, 'NOT_FOUND', 'Resource not found.')));
   app.use(errorHandler);
