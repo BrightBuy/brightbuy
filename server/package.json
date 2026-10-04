@@ -7,6 +7,7 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "db:setup": "node src/setup.js",
+    "seed:project": "node --input-type=module --eval \"process.env.SEED_DEMO='true';process.env.SEED_PROJECT='true';await import('./src/setup.js');\" < /dev/null",
     "test": "node --test"
   },
   "dependencies": {
