@@ -7,23 +7,19 @@ export async function applyMigrations(connection) {
   )`);
   const directory = new URL('../../db/', import.meta.url);
   const files = (await readdir(directory))
-    .filter((name) => /^\d{3}-[a-z0-9-]+\.(?:sql|mjs)$/.test(name))
-    .sort((a, b) => {
-      const baseA = a.replace(/\.(?:sql|mjs)$/, '');
-      const baseB = b.replace(/\.(?:sql|mjs)$/, '');
-      if (baseA === baseB) {
-        return a.endsWith('.mjs') ? -1 : 1;
-      }
-      return a.localeCompare(b);
-    });
+    .filter((name) => /^\d{3}-[a-z0-9-]+\.(sql|mjs)$/.test(name))
+    .sort();
 
-  const executedVersions = new Set();
+  // Reject duplicate version numbers across formats
+  const seen = new Set();
+  for (const filename of files) {
+    const v = filename.replace(/\.(sql|mjs)$/, '');
+    if (seen.has(v)) throw new Error(`Duplicate migration ${v}`);
+    seen.add(v);
+  }
 
   for (const filename of files) {
-    const version = filename.replace(/\.(?:sql|mjs)$/, '');
-    if (executedVersions.has(version)) continue;
-    executedVersions.add(version);
-
+    const version = filename.replace(/\.(sql|mjs)$/, '');
     const [applied] = await connection.execute(
       'SELECT version FROM schema_migrations WHERE version = ?',
       [version],
@@ -31,9 +27,13 @@ export async function applyMigrations(connection) {
     if (applied.length) continue;
 
     if (filename.endsWith('.mjs')) {
-      const migrationModule = await import(new URL(filename, directory).href);
-      if (typeof migrationModule.apply === 'function') {
-        await migrationModule.apply(connection);
+      const fileUrl = new URL(filename, directory).href;
+      const migrationModule = await import(fileUrl);
+      const migrateFn = migrationModule.up || migrationModule.apply;
+      if (typeof migrateFn === 'function') {
+        await migrateFn(connection);
+      } else {
+        throw new Error(`Migration ${filename} does not export an up() or apply() function.`);
       }
     } else {
       const sql = await readFile(new URL(filename, directory), 'utf8');
