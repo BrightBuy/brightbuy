@@ -19,6 +19,8 @@ x-db-env: &db-env
 services:
   db:
     image: mysql:8.4
+    # Allow the application user to install deterministic development routines.
+    command: ['--log-bin-trust-function-creators=1']
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env}
       MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env}
