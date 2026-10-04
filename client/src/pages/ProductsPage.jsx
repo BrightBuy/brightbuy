@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { formatMoney } from '../utils/format.js';
@@ -22,7 +23,9 @@ export function ProductsPage() {
                   <div className={`product-art art-${index % 3}`} aria-hidden="true">
                     {product.name.charAt(0)}
                   </div>
-                  <h2>{product.name}</h2>
+                  <h2>
+                    <Link to={`/products/${product.id}`}>{product.name}</Link>
+                  </h2>
                   <p>{product.description}</p>
                   {product.variants.map((variant) => (
                     <div className="variant" key={variant.id}>
