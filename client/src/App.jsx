@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider.jsx';
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { MainLayout } from './components/MainLayout.jsx';
 import { ProductsPage } from './pages/ProductsPage.jsx';
+import { ProductDetailPage } from './pages/ProductDetailPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { OrdersPage } from './pages/OrdersPage.jsx';
 import { OrderDetailPage } from './pages/OrderDetailPage.jsx';
@@ -19,6 +20,7 @@ export function App() {
         <Routes>
           <Route element={<MainLayout />}>
             <Route index element={<ProductsPage />} />
+            <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="account/orders" element={<OrdersPage />} />
