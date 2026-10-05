@@ -7,20 +7,21 @@ export async function applyMigrations(connection) {
   )`);
   const directory = new URL('../../db/', import.meta.url);
   const files = (await readdir(directory))
-    .filter((name) => /^\d{3}-[a-z0-9-]+\.(?:sql|mjs)$/.test(name))
+    .filter((name) => /^\d{3}-[a-z0-9-]+\.(sql|mjs)$/.test(name))
     .sort((a, b) => {
-      const baseA = a.replace(/\.(?:sql|mjs)$/, '');
-      const baseB = b.replace(/\.(?:sql|mjs)$/, '');
+      const baseA = a.replace(/\.(sql|mjs)$/, '');
+      const baseB = b.replace(/\.(sql|mjs)$/, '');
       if (baseA === baseB) {
+        // Run .mjs instead of .sql if both exist
         return a.endsWith('.mjs') ? -1 : 1;
       }
       return a.localeCompare(b);
     });
 
   const executedVersions = new Set();
-
   for (const filename of files) {
-    const version = filename.replace(/\.(?:sql|mjs)$/, '');
+    const version = filename.replace(/\.(sql|mjs)$/, '');
+    // If we already ran this version (e.g. .mjs preferred over .sql), skip it:
     if (executedVersions.has(version)) continue;
     executedVersions.add(version);
 
@@ -30,10 +31,15 @@ export async function applyMigrations(connection) {
     );
     if (applied.length) continue;
 
+
     if (filename.endsWith('.mjs')) {
-      const migrationModule = await import(new URL(filename, directory).href);
-      if (typeof migrationModule.apply === 'function') {
-        await migrationModule.apply(connection);
+      const fileUrl = new URL(filename, directory).href;
+      const migrationModule = await import(fileUrl);
+      const migrateFn = migrationModule.up || migrationModule.apply;
+      if (typeof migrateFn === 'function') {
+        await migrateFn(connection);
+      } else {
+        throw new Error(`Migration ${filename} does not export an up() or apply() function.`);
       }
     } else {
       const sql = await readFile(new URL(filename, directory), 'utf8');
