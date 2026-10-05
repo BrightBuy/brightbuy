@@ -9,6 +9,7 @@ import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
 import { createLocationRoutes } from './routes/locations.js';
 import { createInventoryRoutes } from './routes/inventory.js';
+import { createCartRoutes } from './routes/cart.js';
 
 // App creation is separate from listen(): tests can use an isolated database.
 export function createApp(db, secret) {
@@ -36,6 +37,7 @@ export function createApp(db, secret) {
   app.use('/api', createCatalogueRoutes(db));
   app.use('/api', createCatalogueAdminRoutes(db, auth));
   app.use('/api', createAccountRoutes(db, auth));
+  app.use('/api', createCartRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
