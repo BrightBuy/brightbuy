@@ -1,6 +1,7 @@
 import { applyMigrations } from './migrate.js';
 import { seedDemoData } from './seed.js';
 import { seedProjectData } from './seedProject.js';
+import { seedLocations } from './seedLocations.js';
 
 // The CLI and tests share this lifecycle. Always close the pool, including when
 // connection acquisition or lock release fails, so setup does not hang.
@@ -29,6 +30,7 @@ export async function runSetup(pool, { seedDemo = false, seedProject = false } =
       // Project seed runs after demo seed so legacy products are already reconciled.
       await connection.beginTransaction();
       try {
+        await seedLocations(connection);
         await seedProjectData(connection);
         await connection.commit();
       } catch (error) {

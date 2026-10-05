@@ -24,6 +24,17 @@ let order = {
   addressSnapshot: { city: 'Colombo' },
 };
 const db = {
+  async getConnection() {
+    return {
+      execute: (...args) => db.execute(...args),
+      query: (...args) => db.query(...args),
+      async beginTransaction() {},
+      async commit() {},
+      async rollback() {},
+      release() {},
+      destroy() {},
+    };
+  },
   async query(sql) {
     if (failDb) throw new Error('private database information');
     return [[]];
@@ -57,6 +68,7 @@ const db = {
       return [{ affectedRows: 1 }];
     }
     if (sql.includes('order_items')) return [[]];
+    if (sql.includes('checkout_requests')) return [[]];
     throw new Error(`Unexpected SQL in test: ${sql}`);
   },
 };
