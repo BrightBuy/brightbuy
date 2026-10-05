@@ -132,7 +132,9 @@ jobs:
       - name: Run live application smoke tests
         id: smoke
         if: ${{ !cancelled() && steps.application.outcome == 'success' }}
-        run: docker compose exec -T api npm run smoke
+        run: |
+          docker compose run --rm --no-deps -T -e SEED_PROJECT=true setup npm run db:setup
+          docker compose exec -T api npm run smoke
 
       - name: Print service logs on failure
         if: failure()
@@ -174,4 +176,3 @@ jobs:
           if failed:
               raise SystemExit("Checks did not pass: " + ", ".join(failed))
           PY
-

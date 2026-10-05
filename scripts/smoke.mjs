@@ -30,7 +30,20 @@ async function login(email) {
 assert.equal((await call('/health')).status, 200);
 const catalogue = await call('/products');
 assert.equal(catalogue.status, 200);
-assert.ok(catalogue.body.data.length >= 3);
+assert.ok(Array.isArray(catalogue.body.data));
+assert.ok(
+  catalogue.body.data.length >= 40,
+  'Expected the project catalogue seed (40+ active products). Run setup with SEED_PROJECT=true.',
+);
+for (const sku of ['NOVA-X1-PRO', 'PIXEL-8A', 'NOVA-MAGSAFE-STAND']) {
+  assert.ok(
+    catalogue.body.data.some((product) => product.sku === sku),
+    `Missing seeded product: ${sku}`,
+  );
+}
+assert.ok(catalogue.body.data.every((product) => product.currency === 'USD'));
+assert.ok(catalogue.body.data.every((product) => !product.sku.startsWith('LEGACY-PRD-')));
+assert.ok(catalogue.body.data.every((product) => product.variants.length > 0));
 assert.ok(catalogue.body.data.some((p) => p.variants.some((v) => v.stock === 0)));
 const customer = await login('nimal@example.test');
 const other = await login('asha@example.test');
@@ -51,9 +64,9 @@ assert.equal(
 assert.equal((await call('/admin/orders', { headers: admin })).body.data.length, 3);
 assert.equal((await call('/admin/customers', { headers: admin })).body.data.length, 2);
 // Verify the sample records and their published response types, not just HTTP 200.
-assert.equal(catalogue.body.data.length, 3);
+// Project catalogue products are active; legacy order fixtures remain unchanged.
 const variants = catalogue.body.data.flatMap((product) => product.variants);
-assert.equal(variants.length, 5);
+assert.ok(variants.length >= catalogue.body.data.length);
 for (const variant of variants) {
   assert.match(variant.price, /^\d+\.\d{2}$/);
   assert.ok(Number.isInteger(variant.stock) && variant.stock >= 0);
@@ -94,4 +107,6 @@ assert.equal(rejected.status, 409);
 assert.equal(rejected.body.error.code, 'INVALID_STATUS_TRANSITION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
 assert.ok(Array.isArray(rejected.body.error.details));
-console.log('Step 1 API contracts and sample-data smoke checks passed. No records changed.');
+console.log(
+  'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
+);
