@@ -50,7 +50,7 @@ export async function up(connection) {
     FROM order_items GROUP BY order_id,variant_id HAVING COUNT(*)>1 LIMIT 1`);
   if (duplicates.length) throw new Error('Duplicate order lines require historical-data review.');
   for(const table of ['customers','orders','order_items','addresses','products','variants',
-    'categories','product_categories','admin_profiles','cities','stores','carts','cart_items']) {
+    'categories','product_categories','cities','stores','carts','cart_items']) {
     const [rows]=await connection.execute(`SELECT ENGINE FROM information_schema.TABLES
       WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?`,[table]);
     if(rows[0]?.ENGINE!=='InnoDB') throw new Error(`Missing InnoDB prerequisite: ${table}`);

@@ -17,7 +17,6 @@ export async function installFixture(connection) {
     'CREATE TABLE cities (id INT UNSIGNED PRIMARY KEY,name VARCHAR(100),is_main_city BOOLEAN,is_active BOOLEAN) ENGINE=InnoDB',
     'CREATE TABLE stores (id INT UNSIGNED PRIMARY KEY,name VARCHAR(100),city_id INT UNSIGNED,address_line VARCHAR(250),is_active BOOLEAN, FOREIGN KEY(city_id) REFERENCES cities(id)) ENGINE=InnoDB',
     'ALTER TABLE addresses ADD city_id INT UNSIGNED NULL, ADD FOREIGN KEY(city_id) REFERENCES cities(id)',
-    'CREATE TABLE admin_profiles (id INT UNSIGNED PRIMARY KEY,FOREIGN KEY(id) REFERENCES customers(id)) ENGINE=InnoDB',
     'CREATE TABLE carts (id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,customer_id INT UNSIGNED UNIQUE NOT NULL,version INT UNSIGNED NOT NULL DEFAULT 0,FOREIGN KEY(customer_id) REFERENCES customers(id)) ENGINE=InnoDB',
     'CREATE TABLE cart_items (cart_id INT UNSIGNED,variant_id INT UNSIGNED,quantity INT UNSIGNED NOT NULL,PRIMARY KEY(cart_id,variant_id),FOREIGN KEY(cart_id) REFERENCES carts(id),FOREIGN KEY(variant_id) REFERENCES variants(id),CHECK(quantity BETWEEN 1 AND 99)) ENGINE=InnoDB',
     `CREATE TABLE inventory_movements (id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -58,7 +57,6 @@ export async function installFixture(connection) {
   await installCheckout(connection);
   await installCheckout(connection); // successful repeat must verify rather than recreate
   await connection.query("INSERT INTO customers(id,name,email,password_hash,role) VALUES (1,'A','a@example.test','test-only-unused','customer'),(2,'B','b@example.test','test-only-unused','customer'),(3,'Admin','admin@example.test','test-only-unused','admin')");
-  await connection.query('INSERT INTO admin_profiles VALUES (3)');
   await connection.query("INSERT INTO cities VALUES(1,'Main',1,1),(2,'Other',0,1)");
   await connection.query("INSERT INTO stores VALUES(1,'Pickup',1,'Store road',1),(2,'Other Pickup',2,'Other road',1)");
   await connection.query("INSERT INTO addresses(id,customer_id,recipient,line1,city,postal_code,country,city_id) VALUES(1,1,'A','Address A','Main','75001','US',1),(2,2,'B','Address B','Other','75002','US',2),(3,1,'A','Address C','Other','75002','US',2)");

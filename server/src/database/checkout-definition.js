@@ -45,7 +45,7 @@ export const checkoutSchemaStatements = [
   UNIQUE KEY uq_collection_request (collection_request_key),
   UNIQUE KEY uq_refund_request (refund_request_key),
   FOREIGN KEY (order_id) REFERENCES orders(id),
-  FOREIGN KEY (collected_by) REFERENCES admin_profiles(id),
+  FOREIGN KEY (collected_by) REFERENCES customers(id),
   FOREIGN KEY (refunded_by) REFERENCES customers(id),
   CONSTRAINT ck_payment_lifecycle CHECK (
     (method='cod' AND status IN ('pending','paid','void')) OR
@@ -110,7 +110,7 @@ export const checkoutSchemaStatements = [
   PRIMARY KEY (order_id, kind),
   UNIQUE KEY uq_operation_request (kind, request_key),
   FOREIGN KEY (order_id) REFERENCES orders(id),
-  FOREIGN KEY (actor_id) REFERENCES admin_profiles(id)
+  FOREIGN KEY (actor_id) REFERENCES customers(id)
 ) ENGINE=InnoDB`,
   `ALTER TABLE orders ADD CONSTRAINT ck_project_order_state CHECK (
   (stock_state IS NULL AND was_out_of_stock IS NULL) OR
