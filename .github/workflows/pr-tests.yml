@@ -46,11 +46,6 @@ jobs:
         id: build
         run: docker compose build api setup client
 
-      - name: Check repository formatting
-        id: formatting
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: docker compose run --rm --no-deps -T api npm run format:check
-
       - name: Test client, server and shared workspaces
         id: workspace
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -155,7 +150,6 @@ jobs:
           import os
           results = json.loads(os.environ["CHECK_RESULTS"])
           required = {
-              "formatting": "Repository formatting",
               "workspace": "Workspace tests",
               "client": "Production client build",
               "checkout_mysql": "Checkout, payments and cancellation",

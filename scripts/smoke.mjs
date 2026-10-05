@@ -36,10 +36,7 @@ assert.ok(
   'Expected the project catalogue seed (40+ active products). Run setup with SEED_PROJECT=true.',
 );
 for (const sku of ['NOVA-X1-PRO', 'PIXEL-8A', 'NOVA-MAGSAFE-STAND']) {
-  assert.ok(
-    catalogue.body.data.some((product) => product.sku === sku),
-    `Missing seeded product: ${sku}`,
-  );
+  assert.ok(catalogue.body.data.some((product) => product.sku === sku), `Missing seeded product: ${sku}`);
 }
 assert.ok(catalogue.body.data.every((product) => product.currency === 'USD'));
 assert.ok(catalogue.body.data.every((product) => !product.sku.startsWith('LEGACY-PRD-')));
@@ -107,6 +104,4 @@ assert.equal(rejected.status, 409);
 assert.equal(rejected.body.error.code, 'INVALID_STATUS_TRANSITION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
 assert.ok(Array.isArray(rejected.body.error.details));
-console.log(
-  'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
-);
+console.log('Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.');
