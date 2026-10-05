@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { nextStatuses } from '@brightbuy/contracts';
 const base = process.env.SMOKE_BASE_URL || 'http://api:3000';
 async function call(path, options = {}) {
   const response = await fetch(`${base}/api${path}`, options);
@@ -36,7 +35,10 @@ assert.ok(
   'Expected the project catalogue seed (40+ active products). Run setup with SEED_PROJECT=true.',
 );
 for (const sku of ['NOVA-X1-PRO', 'PIXEL-8A', 'NOVA-MAGSAFE-STAND']) {
-  assert.ok(catalogue.body.data.some((product) => product.sku === sku), `Missing seeded product: ${sku}`);
+  assert.ok(
+    catalogue.body.data.some((product) => product.sku === sku),
+    `Missing seeded product: ${sku}`,
+  );
 }
 assert.ok(catalogue.body.data.every((product) => product.currency === 'USD'));
 assert.ok(catalogue.body.data.every((product) => !product.sku.startsWith('LEGACY-PRD-')));
@@ -87,7 +89,17 @@ for (const [headers, customerId, expectedCount] of [
     assert.match(detail.body.data.total, /^\d+\.\d{2}$/);
     assert.equal(detail.body.data.currency, 'LKR');
     assert.equal(new Date(summary.createdAt).toISOString(), summary.createdAt);
-    assert.deepEqual(summary.nextStatuses, nextStatuses(summary.status, summary.fulfillment));
+    // Foundation samples have no verified checkout/payment/fulfilment metadata.
+    // They stay readable, but must not advertise project lifecycle actions.
+    for (const record of [summary, detail.body.data]) {
+      assert.equal(record.isLegacy, true);
+      assert.deepEqual(record.nextStatuses, []);
+      assert.equal(record.payment, null);
+      assert.equal(record.delivery, null);
+      assert.equal(record.stockState, null);
+      assert.equal(record.wasOutOfStock, null);
+    }
+    assert.deepEqual(detail.body.data.history, []);
     assert.ok(detail.body.data.items.length > 0);
     if (summary.fulfillment === 'pickup') assert.equal(summary.addressSnapshot, null);
     else assert.equal(typeof summary.addressSnapshot.recipient, 'string');
@@ -104,4 +116,6 @@ assert.equal(rejected.status, 409);
 assert.equal(rejected.body.error.code, 'INVALID_STATUS_TRANSITION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
 assert.ok(Array.isArray(rejected.body.error.details));
-console.log('Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.');
+console.log(
+  'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
+);
