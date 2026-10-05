@@ -61,6 +61,14 @@
 ## Connect the backend to HTTP
 
 - feature/checkout-payments
-- 
+- 33d0607e718ff5985e35aae25a9d5efbdc598f2e
 
 | `docker compose run --build --rm --no-deps api npm test` |
+
+
+## Build the customer checkout screen
+
+- feature/checkout-payments
+- 
+
+| `docker compose run --build --rm --no-deps client npm run build --workspace client` |
