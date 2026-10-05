@@ -13,16 +13,10 @@ const ORDER_SELECT = `
          stock_state AS stockState, was_out_of_stock AS wasOutOfStock
   FROM orders`;
 
-function presentOrder(order) {
-  return {
-    ...order,
-    addressSnapshot:
-      typeof order.addressSnapshot === 'string'
-        ? JSON.parse(order.addressSnapshot)
-        : order.addressSnapshot,
-    nextStatuses: nextStatuses(order.status, order.fulfillment),
-  };
+function orderNotFound() {
+  return new ApiError(404, 'NOT_FOUND', 'Resource not found.');
 }
+
 export function createOrderRoutes(db, requireAuthentication) {
   const router = Router();
   const cancelOrder = makeCancellation({
@@ -89,33 +83,50 @@ export function createOrderRoutes(db, requireAuthentication) {
       ) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'Provide only a status string.');
       }
-      const [orders] = await db.execute(`${ORDER_SELECT} WHERE id = ?`, [id]);
-      const order = orders[0];
-      if (!order) throw orderNotFound();
-      // Project transitions must also update history/payment/inventory atomically.
-      // M4's fulfilment integration replaces this foundation-only status writer.
-      if (order.stockState != null || order.wasOutOfStock != null) {
-        throw new ApiError(
-          409,
-          'PROJECT_ORDER_ACTION_REQUIRED',
-          'Use the project fulfilment or cancellation action.',
+      const target = body.status;
+      const data = await inTransaction(db, async (connection) => {
+        const [orders] = await connection.execute(
+          `${ORDER_SELECT} WHERE id = ? FOR UPDATE`,
+          [id],
         );
-      }
-      const allowed = nextStatuses(order.status, order.fulfillment);
-      if (!allowed.includes(body.status)) {
-        throw new ApiError(
-          409,
-          'INVALID_STATUS_TRANSITION',
-          'This order cannot move to that status.',
-          [{ allowed }],
+        const order = orders[0];
+        if (!order) throw orderNotFound();
+
+        // Preserve the existing foundation-only writer. Project orders need
+        // dedicated actions that update payment/inventory/history together.
+        if (order.stockState != null || order.wasOutOfStock != null) {
+          throw new ApiError(
+            409,
+            'PROJECT_ORDER_ACTION_REQUIRED',
+            'Use the project fulfilment or cancellation action.',
+          );
+        }
+        const allowed = nextStatuses(order.status, order.fulfillment);
+        if (!allowed.includes(target)) {
+          throw new ApiError(
+            409,
+            'INVALID_STATUS_TRANSITION',
+            'This order cannot move to that status.',
+            [{ allowed }],
+          );
+        }
+
+        const [updated] = await connection.execute(
+          'UPDATE orders SET status = ? WHERE id = ? AND status = ?',
+          [target, id, order.status],
         );
-      }
-      await connection.execute('UPDATE orders SET status=? WHERE id=?',[target,id]);
-      await connection.execute(`INSERT INTO order_status_history(order_id,from_status,to_status,actor_id)
-        VALUES(?,?,?,?)`,[id,order.status,target,req.user.id]);
-      return presentOrderDetail(connection,id);
-    });
-    res.json({data});
-  });
+        if (updated.affectedRows !== 1) {
+          throw new ApiError(409, 'ORDER_CHANGED', 'The order changed; reload and try again.');
+        }
+        await connection.execute(
+          `INSERT INTO order_status_history (order_id, from_status, to_status, actor_id)
+           VALUES (?, ?, ?, ?)`,
+          [id, order.status, target, req.user.id],
+        );
+        return presentTracking(connection, id);
+      });
+      res.json({ data });
+    },
+  );
   return router;
 }
