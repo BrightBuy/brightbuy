@@ -45,6 +45,7 @@ export function MainLayout({ admin = false }) {
             </NavLink>
             <NavLink to="/admin/products">Products</NavLink>
             <NavLink to="/admin/inventory">Inventory</NavLink>
+            <NavLink to="/admin/locations">Locations</NavLink>
             <NavLink to="/admin/customers">Customers</NavLink>
             <NavLink to="/admin/orders">Orders</NavLink>
           </nav>

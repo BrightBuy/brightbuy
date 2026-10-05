@@ -9,6 +9,7 @@ let server, base, passwordHash;
 let failDb = false,
   concurrent = false;
 let authLookups = 0;
+let statusHistory = [];
 const users = [
   { id: 1, name: 'Customer', email: 'customer@example.test', role: 'customer' },
   { id: 2, name: 'Admin', email: 'admin@example.test', role: 'admin' },
@@ -24,6 +25,17 @@ let order = {
   addressSnapshot: { city: 'Colombo' },
 };
 const db = {
+  async getConnection() {
+    return {
+      execute: (...args) => db.execute(...args),
+      query: (...args) => db.query(...args),
+      async beginTransaction() {},
+      async commit() {},
+      async rollback() {},
+      release() {},
+      destroy() {},
+    };
+  },
   async query(sql) {
     if (failDb) throw new Error('private database information');
     return [[]];
@@ -56,7 +68,12 @@ const db = {
       order.status = params[0];
       return [{ affectedRows: 1 }];
     }
+    if (sql.includes('INSERT INTO order_status_history')) {
+      statusHistory.push({ orderId: params[0], fromStatus: params[1], toStatus: params[2], actorId: params[3] });
+      return [{ affectedRows: 1 }];
+    }
     if (sql.includes('order_items')) return [[]];
+    if (sql.includes('checkout_requests')) return [[]];
     throw new Error(`Unexpected SQL in test: ${sql}`);
   },
 };
@@ -94,6 +111,7 @@ beforeEach(() => {
   failDb = false;
   concurrent = false;
   order.status = 'pending';
+  statusHistory = [];
 });
 after(async () => {
   await new Promise((r) => server.close(r));
@@ -188,10 +206,12 @@ test('status transitions reject skipping, extra input and concurrent writes', as
   assert.equal((await update({ status: 'confirmed', total: 1 })).status, 400);
   concurrent = true;
   assert.equal((await update({ status: 'confirmed' })).body.error.code, 'ORDER_CHANGED');
+  assert.equal(statusHistory.length, 0);
   concurrent = false;
   const r = await update({ status: 'confirmed' });
   assert.equal(r.status, 200);
   assert.equal(r.body.data.status, 'confirmed');
+  assert.deepEqual(statusHistory, [{ orderId: 1, fromStatus: 'pending', toStatus: 'confirmed', actorId: 2 }]);
   assert.equal((await update({ status: 'pending' })).status, 409);
 });
 test('delivery and pickup paths are exclusive and terminal states cannot change', () => {
@@ -305,4 +325,18 @@ test('inventory routes remain restricted to administrators after route integrati
     assert.equal((await request(path, options)).status, 401);
     assert.equal((await request(path, { ...options, id: 1 })).status, 403);
   }
+});
+
+test('backorders allow allocation or cancellation in both fulfilment modes', () => {
+  for (const mode of ['delivery', 'pickup']) {
+    assert.deepEqual(nextStatuses('backordered', mode), ['confirmed', 'cancelled']);
+  }
+  assert.deepEqual(nextStatuses('backordered', 'unknown'), []);
+});
+
+test('backorder rules resist direct mutation and returned-list mutation', () => {
+  assert.throws(() => ORDER_TRANSITIONS.backordered.push('processing'), TypeError);
+  const offered = nextStatuses('backordered', 'delivery');
+  offered.push('processing');
+  assert.deepEqual(nextStatuses('backordered', 'delivery'), ['confirmed', 'cancelled']);
 });

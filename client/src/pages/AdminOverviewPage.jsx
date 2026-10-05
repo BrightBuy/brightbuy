@@ -13,6 +13,7 @@ export function AdminOverviewPage() {
         {[
           ['products', 'Catalogue', 'Inspect products, variants and stock.'],
           ['customers', 'Customers', 'See the sample customer accounts.'],
+          ['locations', 'Locations', 'Manage supported cities and pickup stores.'],
           ['orders', 'Orders', 'Review delivery and pickup orders.'],
         ].map(([path, title, description]) => (
           <Link className="card tile" key={path} to={`/admin/${path}`}>
