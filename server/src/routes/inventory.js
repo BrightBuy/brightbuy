@@ -10,7 +10,7 @@ export function createInventoryRoutes(db, requireAuthentication) {
     const router = Router();
 
     //check only admin is logging to the page
-    router.use(requireAuthentication, requireAdmin);
+    router.use(['/admin/inventory', '/admin/variants'], requireAuthentication, requireAdmin);
 
     //view currunt inventory+
     router.get('/admin/inventory', async (req, res) => {

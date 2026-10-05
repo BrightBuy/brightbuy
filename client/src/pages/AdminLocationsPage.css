@@ -1,0 +1,59 @@
+.locations-page section {
+  margin-top: 36px;
+}
+.locations-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.locations-grid > * {
+  min-width: 0;
+}
+.locations-page fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.locations-page h3 {
+  margin: 0;
+}
+.locations-page select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #b9c7bd;
+  border-radius: 7px;
+  font: inherit;
+  background: white;
+}
+.locations-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.locations-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.locations-note {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+.locations-success {
+  background: #e8efe3;
+  padding: 16px;
+  border-radius: 8px;
+}
+.locations-page td {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 950px) {
+  .locations-grid {
+    grid-template-columns: 1fr;
+  }
+}

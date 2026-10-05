@@ -7,9 +7,16 @@ import { createCatalogueRoutes } from './routes/catalogue.js';
 import { createCatalogueAdminRoutes } from './routes/catalogue-admin.js';
 import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
+import { createLocationRoutes } from './routes/locations.js';
 import { createInventoryRoutes } from './routes/inventory.js';
 import { createFulfilmentRoutes } from './routes/fulfilment.js';
 
+import { createCheckoutRoutes } from './routes/checkout.js';
+import { makeCheckout } from './services/checkout.js';
+import { makeCancellation } from './services/cancellation.js';
+import { readCart } from './services/cart.js';
+import { getDestination, deliveryDays } from './services/locations.js';
+import { applyStockChange } from './services/inventory.js';
 
 
 // App creation is separate from listen(): tests can use an isolated database.
@@ -19,6 +26,9 @@ export function createApp(db, secret) {
   }
   const app = express();
   const auth = createAuthMiddleware(db, secret);
+  const checkout = makeCheckout({ readCart, getDestination, deliveryDays, applyStockChange });
+  const cancelOrder = makeCancellation({ applyStockChange });
+
   app.disable('x-powered-by');
   app.use((req, res, next) => {
     req.id = randomUUID();
@@ -40,7 +50,9 @@ export function createApp(db, secret) {
   app.use('/api', createAccountRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
   app.use('/api', createFulfilmentRoutes(db, auth));
+  app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
+  app.use('/api', createCheckoutRoutes(db, auth, { checkout, cancelOrder }));
 
   // Error middleware must be last so every route uses the same error format.
   app.use((req, res, next) => next(new ApiError(404, 'NOT_FOUND', 'Resource not found.')));
