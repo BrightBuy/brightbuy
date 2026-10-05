@@ -1,0 +1,48 @@
+.order-tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.order-tracking-grid section {
+  min-width: 0;
+}
+.order-tracking-grid h2 {
+  font-size: 20px;
+}
+.order-history {
+  padding-left: 24px;
+}
+.order-history li {
+  padding: 8px 0;
+}
+.order-history time {
+  display: block;
+  color: #58675e;
+  font-size: 14px;
+}
+.order-cancel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #dce3dc;
+}
+.order-cancel label {
+  display: block;
+  margin-bottom: 12px;
+}
+.order-cancel input {
+  margin-top: 8px;
+}
+.order-cancel .actions {
+  margin-top: 12px;
+}
+.order-notice {
+  background: #f6f0dc;
+  padding: 16px;
+  border-radius: 8px;
+}
+@media (max-width: 700px) {
+  .order-tracking-grid {
+    grid-template-columns: 1fr;
+  }
+}

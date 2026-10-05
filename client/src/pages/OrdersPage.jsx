@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { formatMoney, statusLabel } from '../utils/format.js';
+import { calendarDate, trackingStatus } from '../utils/order-tracking.js';
 
 export function OrdersPage({ admin = false }) {
   const state = useData(admin ? '/admin/orders' : '/orders');
@@ -19,6 +20,8 @@ export function OrdersPage({ admin = false }) {
                     <th>Order</th>
                     <th>Status</th>
                     <th>Fulfillment</th>
+                    <th>Payment</th>
+                    <th>Estimate</th>
                     <th>Total</th>
                     <th>Details</th>
                   </tr>
@@ -28,9 +31,28 @@ export function OrdersPage({ admin = false }) {
                     <tr key={order.id}>
                       <td>#{order.id}</td>
                       <td>
-                        <span className="badge">{statusLabel(order.status)}</span>
+                        <span className="badge">{trackingStatus(order.status)}</span>
                       </td>
                       <td>{order.fulfillment}</td>
+                      <td>
+                        {order.payment
+                          ? statusLabel(order.payment.status)
+                          : 'Legacy sample — unavailable'}
+                      </td>
+                      <td>
+                        {order.delivery ? (
+                          <>
+                            {order.status === 'cancelled'
+                              ? 'Original: '
+                              : order.fulfillment === 'pickup'
+                                ? 'Ready: '
+                                : 'Delivery: '}
+                            {calendarDate(order.delivery.estimatedDate)}
+                          </>
+                        ) : (
+                          'Unavailable'
+                        )}
+                      </td>
                       <td>{formatMoney(order.total, order.currency)}</td>
                       <td>
                         <Link to={`${admin ? '/admin' : '/account'}/orders/${order.id}`}>
