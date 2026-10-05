@@ -1,0 +1,17 @@
+services:
+  m3-test-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: m3_test_only_password
+      MYSQL_ROOT_HOST: '%'
+    command: ['--default-time-zone=+00:00']
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysql --host=127.0.0.1 --user=root --execute="SELECT 1" >/dev/null 2>&1'
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s

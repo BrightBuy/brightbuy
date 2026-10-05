@@ -106,3 +106,19 @@ export function addMoney(...unitsList) {
     return acc + curr;
   }, 0n);
 }
+
+export const MAX_ORDER_UNITS = 999999999999n;
+
+export function sumLines(lines) {
+  let total = 0n;
+  for (const line of lines) {
+    if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 99) {
+      throw new RangeError('Quantity must be 1–99.');
+    }
+    const price = parseMoney(line.unitPrice, {max: null});
+    if (price > MAX_ORDER_UNITS) throw new RangeError('Price exceeds the order limit.');
+    total += price * BigInt(line.quantity);
+    if (total > MAX_ORDER_UNITS) throw new RangeError('Order total exceeds the limit.');
+  }
+  return formatMoneyUnits(total);
+}
