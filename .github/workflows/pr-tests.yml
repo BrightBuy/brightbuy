@@ -1,116 +1,172 @@
-name: Pull request tests
+name: BrightBuy PR validation
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-tests-${{ github.workflow }}-${{ github.ref }}
+  group: brightbuy-pr-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Disposable CI credentials only. No repository secrets or local .env required.
+# Disposable GitHub runner credentials, never production credentials.
 env:
+  COMPOSE_PROJECT_NAME: brightbuy-ci
+  COMPOSE_FILE: compose.yaml:compose.m3-test.yaml
   MYSQL_DATABASE: brightbuy_ci
   MYSQL_USER: brightbuy_ci
   MYSQL_PASSWORD: ci_app_password
   MYSQL_ROOT_PASSWORD: ci_root_password
   JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
-  COMPOSE_FILE: compose.yaml:compose.m3-test.yaml
+  SEED_DEMO: 'true'
 
 jobs:
-  workspace-tests:
-    name: Workspace tests and checkout MySQL
+  validate:
+    name: Required tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out proposed merge
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Build test image
-        run: docker compose build api
-      - name: Start disposable MySQL
-        run: docker compose up -d --wait --wait-timeout 300 m3-test-db
-      - name: Run all workspace tests with checkout MySQL enabled
-        run: >-
-          docker compose run --rm --no-deps
-          -e M3_TEST_MYSQL_URL=mysql://root:m3_test_only_password@m3-test-db:3306
-          api npm test
-      - name: Build client
-        run: docker compose run --rm --no-deps api npm run build
-      - name: Database logs on failure
-        if: failure()
-        run: docker compose logs --no-color --tail 100 m3-test-db
-      - name: Remove disposable database
-        if: always()
-        run: docker compose rm --stop --force m3-test-db
 
-  locations-mysql:
-    name: MySQL - ${{ matrix.suite }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - suite: locations-migration
-            flag: LOCATIONS_TEST_MYSQL
-            file: server/test/locations-migration.test.js
-          - suite: locations-api
-            flag: LOCATIONS_API_TEST_MYSQL
-            file: server/test/locations-api.test.js
-          - suite: delivery-days
-            flag: DELIVERY_DAYS_TEST_MYSQL
-            file: server/test/delivery-days.test.js
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - name: Build test image
-        run: docker compose build api
-      - name: Start disposable MySQL
+      - name: Validate Docker configuration
+        run: docker compose config --quiet
+
+      # The services share a Dockerfile and build cache on this runner.
+      - name: Build application images
+        id: build
+        run: docker compose build api setup client
+
+      - name: Test client, server and shared workspaces
+        id: workspace
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # Opt-in database tests run explicitly in the steps below.
+        run: docker compose run --rm --no-deps -T api npm test
+
+      - name: Build production client
+        id: client
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: docker compose run --rm --no-deps -T api npm run build
+
+      - name: Start isolated MySQL 8.4
+        id: database
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: docker compose up -d --wait --wait-timeout 300 m3-test-db
-      # Each matrix job has its own runner and empty database. These suites
-      # explicitly reject an existing schema and must not share one.
-      - name: Create empty locations test database
+
+      - name: Test checkout, payments and cancellation on MySQL
+        id: checkout_mysql
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
         run: >-
-          docker compose exec -T
-          -e MYSQL_PWD=m3_test_only_password
-          m3-test-db mysql -uroot
-          -e 'CREATE DATABASE brightbuy_locations_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
-      - name: Run opted-in MySQL suite
-        env:
-          TEST_FLAG: ${{ matrix.flag }}
-          TEST_FILE: ${{ matrix.file }}
+          docker compose run --rm --no-deps -T
+          -e M3_TEST_MYSQL_URL=mysql://root:m3_test_only_password@m3-test-db:3306
+          api node --test server/test/checkout.mysql.test.js
+
+      - name: Test location schema constraints and migration retries
+        id: locations_schema
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
         run: |
-          docker compose run --rm --no-deps \
-            -e "$TEST_FLAG=1" \
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
+            m3-test-db mysql -uroot \
+            -e 'CREATE DATABASE brightbuy_locations_test_locationsschema CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+          docker compose run --rm --no-deps -T \
+            -e LOCATIONS_TEST_MYSQL=1 \
             -e MYSQL_TEST_HOST=m3-test-db \
             -e MYSQL_TEST_PORT=3306 \
             -e MYSQL_TEST_USER=root \
             -e MYSQL_TEST_PASSWORD=m3_test_only_password \
-            -e MYSQL_TEST_DATABASE=brightbuy_locations_test_ci \
-            api node --test "$TEST_FILE"
-      - name: Database logs on failure
-        if: failure()
-        run: docker compose logs --no-color --tail 100 m3-test-db
-      - name: Remove disposable database
-        if: always()
-        run: docker compose rm --stop --force m3-test-db
+            -e MYSQL_TEST_DATABASE=brightbuy_locations_test_locationsschema \
+            api node --test server/test/locations-migration.test.js
 
-  required-tests:
-    name: Required tests
-    if: always()
-    needs: [workspace-tests, locations-mysql]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require every test job to succeed
-        env:
-          WORKSPACE_RESULT: ${{ needs.workspace-tests.result }}
-          LOCATIONS_RESULT: ${{ needs.locations-mysql.result }}
+      - name: Test location API with the full migration chain
+        id: locations_api
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
         run: |
-          test "$WORKSPACE_RESULT" = success
-          test "$LOCATIONS_RESULT" = success
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
+            m3-test-db mysql -uroot \
+            -e 'CREATE DATABASE brightbuy_locations_test_locationsapi CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+          docker compose run --rm --no-deps -T \
+            -e LOCATIONS_API_TEST_MYSQL=1 \
+            -e MYSQL_TEST_HOST=m3-test-db \
+            -e MYSQL_TEST_PORT=3306 \
+            -e MYSQL_TEST_USER=root \
+            -e MYSQL_TEST_PASSWORD=m3_test_only_password \
+            -e MYSQL_TEST_DATABASE=brightbuy_locations_test_locationsapi \
+            api node --test server/test/locations-api.test.js
+
+      - name: Test delivery estimates with the full migration chain
+        id: delivery_days
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
+        run: |
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
+            m3-test-db mysql -uroot \
+            -e 'CREATE DATABASE brightbuy_locations_test_deliverydays CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+          docker compose run --rm --no-deps -T \
+            -e DELIVERY_DAYS_TEST_MYSQL=1 \
+            -e MYSQL_TEST_HOST=m3-test-db \
+            -e MYSQL_TEST_PORT=3306 \
+            -e MYSQL_TEST_USER=root \
+            -e MYSQL_TEST_PASSWORD=m3_test_only_password \
+            -e MYSQL_TEST_DATABASE=brightbuy_locations_test_deliverydays \
+            api node --test server/test/delivery-days.test.js
+
+      - name: Start application with migrations and demo seed
+        id: application
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # Uses the separate db service, not the integration-test databases.
+        run: docker compose up --no-build -d --wait --wait-timeout 300 client
+
+      - name: Run live application smoke tests
+        id: smoke
+        if: ${{ !cancelled() && steps.application.outcome == 'success' }}
+        run: |
+          docker compose run --rm --no-deps -T -e SEED_PROJECT=true setup npm run db:setup
+          docker compose exec -T api npm run smoke
+
+      - name: Print service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 150
+
+      - name: Clean up CI containers and volumes
+        if: always()
+        # Scoped to brightbuy-ci on this disposable GitHub runner.
+        run: docker compose down --volumes --remove-orphans
+
+      - name: Summarize and verify every required check
+        if: always()
+        env:
+          CHECK_RESULTS: ${{ toJSON(steps) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          results = json.loads(os.environ["CHECK_RESULTS"])
+          required = {
+              "workspace": "Workspace tests",
+              "client": "Production client build",
+              "checkout_mysql": "Checkout, payments and cancellation",
+              "locations_schema": "Location schema and migration retries",
+              "locations_api": "Location API and migrations",
+              "delivery_days": "Delivery estimates and migrations",
+              "application": "Application startup and seed",
+              "smoke": "Live application smoke tests",
+          }
+          failed = []
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("| Check | Result |\n| --- | --- |\n")
+              for key, label in required.items():
+                  outcome = results.get(key, {}).get("outcome", "missing")
+                  summary.write(f"| {label} | {outcome} |\n")
+                  if outcome != "success":
+                      failed.append(label)
+          if failed:
+              raise SystemExit("Checks did not pass: " + ", ".join(failed))
+          PY
