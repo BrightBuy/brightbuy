@@ -294,3 +294,15 @@ test('oversized JSON uses the shared 413 error response', async () => {
   assert.equal(result.body.error.code, 'PAYLOAD_TOO_LARGE');
   assert.equal(result.body.error.requestId, result.requestId);
 });
+
+test('inventory routes remain restricted to administrators after route integration', async () => {
+  for (const [path, method] of [
+    ['/api/admin/inventory', 'GET'],
+    ['/api/admin/variants/1/stock-adjustments', 'POST'],
+    ['/api/admin/variants/1/stock-movements', 'GET'],
+  ]) {
+    const options = { method, ...(method === 'POST' ? { body: '{}' } : {}) };
+    assert.equal((await request(path, options)).status, 401);
+    assert.equal((await request(path, { ...options, id: 1 })).status, 403);
+  }
+});
