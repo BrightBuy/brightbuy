@@ -29,11 +29,11 @@ const db = {
     return {
       execute: (...args) => db.execute(...args),
       query: (...args) => db.query(...args),
-      async beginTransaction() {},
-      async commit() {},
-      async rollback() {},
-      release() {},
-      destroy() {},
+      async beginTransaction() { },
+      async commit() { },
+      async rollback() { },
+      release() { },
+      destroy() { },
     };
   },
   async query(sql) {
