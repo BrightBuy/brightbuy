@@ -1,0 +1,61 @@
+{
+  "description": "Fictional development pickup stores and assumed city classifications. These are not verified business locations.",
+  "cities": [
+    { "name": "Dallas", "isMainCity": true, "isActive": true },
+    { "name": "Austin", "isMainCity": true, "isActive": true },
+    { "name": "Houston", "isMainCity": true, "isActive": true },
+    { "name": "Waco", "isMainCity": false, "isActive": true },
+    { "name": "Tyler", "isMainCity": false, "isActive": true },
+    { "name": "El Paso", "isMainCity": false, "isActive": false }
+  ],
+  "stores": [
+    {
+      "name": "Demo Dallas Central",
+      "city": "Dallas",
+      "addressLine": "100 Example Road, Dallas (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo Dallas North",
+      "city": "Dallas",
+      "addressLine": "200 Sample Avenue, Dallas (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo Dallas Inactive",
+      "city": "Dallas",
+      "addressLine": "300 Example Road, Dallas (fictional)",
+      "isActive": false
+    },
+    {
+      "name": "Demo Austin Pickup",
+      "city": "Austin",
+      "addressLine": "100 Sample Street, Austin (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo Houston Pickup",
+      "city": "Houston",
+      "addressLine": "100 Example Lane, Houston (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo Waco Pickup",
+      "city": "Waco",
+      "addressLine": "100 Sample Road, Waco (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo Tyler Pickup",
+      "city": "Tyler",
+      "addressLine": "100 Example Street, Tyler (fictional)",
+      "isActive": true
+    },
+    {
+      "name": "Demo El Paso Pickup",
+      "city": "El Paso",
+      "addressLine": "100 Sample Lane, El Paso (fictional)",
+      "isActive": true
+    }
+  ]
+}
