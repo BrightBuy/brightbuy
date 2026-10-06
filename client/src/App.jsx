@@ -17,6 +17,7 @@ import { AdminOverviewPage } from './pages/AdminOverviewPage.jsx';
 import { AdminCataloguePage } from './pages/AdminCataloguePage.jsx';
 import { AdminInventoryPage } from './pages/AdminInventoryPage.jsx';
 import { AdminLocationsPage } from './pages/AdminLocationsPage.jsx';
+import { AdminFulfilmentPage } from './pages/AdminFulfilmentPage.jsx';
 import { AdminReportsPage } from './pages/AdminReportsPage.jsx';
 import { CheckoutPage } from './pages/CheckoutPage.jsx';
 import { CustomerRoute } from './components/CustomerRoute.jsx';
@@ -59,6 +60,7 @@ export function App() {
               <Route index element={<AdminOverviewPage />} />
               <Route path="products" element={<AdminCataloguePage />} />
               <Route path="inventory" element={<AdminInventoryPage />} />
+              <Route path="fulfilment" element={<AdminFulfilmentPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
               <Route path="reports" element={<AdminReportsPage />} />
               <Route path="customers" element={<CustomersPage />} />
