@@ -20,9 +20,8 @@
 export async function reconcileLegacyCatalogue(connection) {
   // 1. Ensure a legacy category exists for legacy products
   await connection.query(`
-    INSERT INTO categories (id, name, description)
+    INSERT IGNORE INTO categories (id, name, description)
     VALUES (1, 'Everyday Essentials', 'Foundation legacy collection')
-    ON DUPLICATE KEY UPDATE id = id
   `);
 
   // 2. Reconcile legacy products

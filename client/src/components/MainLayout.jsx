@@ -14,19 +14,26 @@ export function MainLayout({ admin = false }) {
           <NavLink to="/" end>
             Shop
           </NavLink>
+          {user && user.role === 'customer' && (
+            <NavLink to="/cart">Cart</NavLink>
+          )}
           {user && (
             <>
               <NavLink to="/account/orders">My orders</NavLink>
               <NavLink to="/account/addresses">Addresses</NavLink>
+              <NavLink to="/account/profile">Profile</NavLink>
             </>
           )}
           {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
           {user ? (
             <button className="secondary" onClick={logout}>
-              Sign out
+              Sign out ({user.name || user.email})
             </button>
           ) : (
-            <NavLink to="/login">Sign in</NavLink>
+            <>
+              <NavLink to="/login">Sign in</NavLink>
+              <NavLink to="/register">Register</NavLink>
+            </>
           )}
         </nav>
       </header>
@@ -38,7 +45,6 @@ export function MainLayout({ admin = false }) {
             </NavLink>
             <NavLink to="/admin/products">Products</NavLink>
             <NavLink to="/admin/inventory">Inventory</NavLink>
-            <NavLink to="/admin/fulfilment">Fulfillment</NavLink>
             <NavLink to="/admin/locations">Locations</NavLink>
             <NavLink to="/admin/customers">Customers</NavLink>
             <NavLink to="/admin/orders">Orders</NavLink>
@@ -46,7 +52,7 @@ export function MainLayout({ admin = false }) {
         )}
         <Outlet />
       </main>
-      <footer>BrightBuy · Shared development foundation · Sample data</footer>
+      <footer>BrightBuy · Customer Accounts, Addresses & Cart Active</footer>
     </>
   );
 }

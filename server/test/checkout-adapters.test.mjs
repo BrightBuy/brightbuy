@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readCart } from '../src/services/cart.js';
+import { readCartForCheckout as readCart } from '../src/services/cart.js';
 import { getDestination, deliveryDays } from '../src/services/locations.js';
 
 function connection(...responses) {

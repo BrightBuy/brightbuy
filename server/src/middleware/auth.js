@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../errors.js';
 
-export const USER_FIELDS = 'id, name, email, role';
+export const USER_FIELDS =
+  'id, name, email, role, first_name AS firstName, last_name AS lastName, phone_number AS phoneNumber, registered_at AS registeredAt';
+
 export const TOKEN_OPTIONS = {
   algorithms: ['HS256'],
   issuer: 'brightbuy',
@@ -31,8 +33,17 @@ export function createAuthMiddleware(db, secret) {
       claims.sub,
     ]);
     if (!users[0]) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
-    // Read the current database role so role changes take effect immediately.
-    req.user = users[0];
+    const user = users[0];
+    req.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
+      phoneNumber: user.phoneNumber || null,
+      registeredAt: user.registeredAt ? new Date(user.registeredAt).toISOString() : null,
+    };
     res.set('Cache-Control', 'no-store');
     next();
   };
