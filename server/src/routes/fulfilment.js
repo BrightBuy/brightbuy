@@ -9,12 +9,10 @@ const UUID_REGEX =
 export function createFulfilmentRoutes(db, requireAuthentication) {
     const router = Router();
 
-    //only admin and warehouse workers can acceses this 
-    router.use(requireAuthentication, requireAdmin);
-
 
     //post /admin/orders/:id/allocate
-    router.post('/admin/orders/:id/allocate', async (req, res) => {
+    router.post('/admin/orders/:id/allocate', requireAuthentication, requireAdmin, async (req, res) => {
+
         const orderId = positiveId(req.params.id);
         const { requestKey } = req.body || {};
 
@@ -177,7 +175,8 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
 
 
     // patch /admin/orders/:id/status
-    router.patch('/admin/orders/:id/status', async (req, res) => {
+    router.patch('/admin/orders/:id/status', requireAuthentication, requireAdmin, async (req, res) => {
+
         const orderId = positiveId(req.params.id);
         const { status: targetStatus } = req.body || {};
 
@@ -306,7 +305,8 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
 
 
     // post /admin/orders/:id/complete
-    router.post('/admin/orders/:id/complete', async (req, res) => {
+    router.post('/admin/orders/:id/complete', requireAuthentication, requireAdmin, async (req, res) => {
+
         const orderId = positiveId(req.params.id);
         const { requestKey, cashReceived } = req.body || {};
 
