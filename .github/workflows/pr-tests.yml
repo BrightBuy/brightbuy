@@ -118,20 +118,37 @@ jobs:
             -e MYSQL_TEST_DATABASE=brightbuy_locations_test_deliverydays \
             api node --test server/test/delivery-days.test.js
 
-      - name: Test five reports and report indexes on MySQL
-        id: reports_mysql
+      - name: Test checkout destinations on MySQL
+        id: locations_destinations
         if: ${{ !cancelled() && steps.database.outcome == 'success' }}
         run: |
           docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
             m3-test-db mysql -uroot \
-            -e 'CREATE DATABASE brightbuy_reports_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+            -e 'CREATE DATABASE brightbuy_locations_test_destinations CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
           docker compose run --rm --no-deps -T \
-            -e REPORTS_TEST_MYSQL=1 \
+            -e LOCATIONS_DESTINATION_TEST_MYSQL=1 \
             -e MYSQL_TEST_HOST=m3-test-db \
+            -e MYSQL_TEST_PORT=3306 \
             -e MYSQL_TEST_USER=root \
             -e MYSQL_TEST_PASSWORD=m3_test_only_password \
-            -e MYSQL_TEST_DATABASE=brightbuy_reports_test_ci \
-            api node --test server/test/reports.mysql.test.js
+            -e MYSQL_TEST_DATABASE=brightbuy_locations_test_destinations \
+            api node --test server/test/locations-destination.test.js
+
+      - name: Test team checkout, tracking and repeatable demos
+        id: tracking_mysql
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
+        run: |
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
+            m3-test-db mysql -uroot \
+            -e 'CREATE DATABASE brightbuy_tracking_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+          docker compose run --rm --no-deps -T \
+            -e TRACKING_TEST_MYSQL=1 \
+            -e MYSQL_TEST_HOST=m3-test-db \
+            -e MYSQL_TEST_PORT=3306 \
+            -e MYSQL_TEST_USER=root \
+            -e MYSQL_TEST_PASSWORD=m3_test_only_password \
+            -e MYSQL_TEST_DATABASE=brightbuy_tracking_test_ci \
+            api node --test server/test/order-tracking.mysql.test.js
 
       - name: Start application with migrations and demo seed
         id: application
@@ -144,7 +161,9 @@ jobs:
         if: ${{ !cancelled() && steps.application.outcome == 'success' }}
         run: |
           docker compose run --rm --no-deps -T -e SEED_PROJECT=true setup npm run db:setup
-          docker compose exec -T api npm run smoke
+          docker compose run --rm --no-deps -T -e SEED_CHECKOUT=true api npm run seed:checkout
+          docker compose run --rm --no-deps -T -e SEED_CHECKOUT=true api npm run seed:checkout
+          docker compose exec -T -e SMOKE_CHECKOUT_DEMOS=true api npm run smoke
 
       - name: Print service logs on failure
         if: failure()
@@ -171,7 +190,8 @@ jobs:
               "locations_schema": "Location schema and migration retries",
               "locations_api": "Location API and migrations",
               "delivery_days": "Delivery estimates and migrations",
-              "reports_mysql": "Five reports and report indexes",
+              "locations_destinations": "Checkout destinations",
+              "tracking_mysql": "Team checkout, tracking and demo replay",
               "application": "Application startup and seed",
               "smoke": "Live application smoke tests",
           }

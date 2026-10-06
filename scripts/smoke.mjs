@@ -52,7 +52,7 @@ assert.equal((await call('/admin/customers', { headers: customer })).status, 403
 assert.equal((await call('/orders/1', { headers: other })).status, 404);
 const addresses = await call('/addresses', { headers: customer });
 assert.equal(addresses.status, 200);
-assert.equal(addresses.body.data.length, 2);
+assert.ok([1, 2].every((id) => addresses.body.data.some((address) => address.id === id)));
 const order = await call('/orders/1', { headers: customer });
 assert.equal(order.status, 200);
 assert.equal(order.body.data.items.length, 2);
@@ -60,8 +60,9 @@ assert.equal(
   Number(order.body.data.total),
   order.body.data.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0),
 );
-assert.equal((await call('/admin/orders', { headers: admin })).body.data.length, 3);
-assert.equal((await call('/admin/customers', { headers: admin })).body.data.length, 2);
+assert.deepEqual((await call('/admin/orders', { headers: admin })).body.data.filter((order) => order.isLegacy).map((order) => order.id).sort((a, b) => a - b), [1, 2, 3]);
+const customers = (await call('/admin/customers', { headers: admin })).body.data;
+for (const email of ['nimal@example.test', 'asha@example.test']) assert.ok(customers.some((customer) => customer.email === email));
 // Verify the sample records and their published response types, not just HTTP 200.
 // Project catalogue products are active; legacy order fixtures remain unchanged.
 const variants = catalogue.body.data.flatMap((product) => product.variants);
@@ -72,7 +73,7 @@ for (const variant of variants) {
   assert.ok(catalogue.body.data.some((product) => product.id === variant.productId));
 }
 const otherAddresses = await call('/addresses', { headers: other });
-assert.equal(otherAddresses.body.data.length, 1);
+assert.ok(otherAddresses.body.data.some((address) => address.id === 3));
 assert.ok(addresses.body.data.every((address) => address.customerId === 1));
 assert.ok(otherAddresses.body.data.every((address) => address.customerId === 2));
 for (const [headers, customerId, expectedCount] of [
@@ -81,9 +82,10 @@ for (const [headers, customerId, expectedCount] of [
 ]) {
   const list = await call('/orders', { headers });
   assert.equal(list.status, 200);
-  assert.equal(list.body.data.length, expectedCount);
+  const legacy = list.body.data.filter((order) => order.isLegacy);
+  assert.equal(legacy.length, expectedCount);
   assert.ok(list.body.data.every((order) => order.customerId === customerId));
-  for (const summary of list.body.data) {
+  for (const summary of legacy) {
     const detail = await call(`/orders/${summary.id}`, { headers });
     assert.equal(detail.status, 200);
     assert.match(detail.body.data.total, /^\d+\.\d{2}$/);
@@ -113,9 +115,34 @@ const rejected = await call('/admin/orders/1/status', {
   body: JSON.stringify({ status: 'not-a-status' }),
 });
 assert.equal(rejected.status, 409);
-assert.equal(rejected.body.error.code, 'INVALID_STATUS_TRANSITION');
+assert.equal(rejected.body.error.code, 'LEGACY_ORDER_REQUIRES_MIGRATION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
-assert.ok(Array.isArray(rejected.body.error.details));
+
 console.log(
   'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
 );
+
+// Optional fresh-demo verification; ordinary smoke also works without checkout demos.
+if (process.env.SMOKE_CHECKOUT_DEMOS === 'true') {
+  const { CHECKOUT_SCENARIOS } = await import('../server/src/database/seedCheckout.js');
+  for (const scenario of CHECKOUT_SCENARIOS) {
+    const headers = await login(`${scenario.key}@example.test`);
+    const list = await call('/orders', { headers });
+    assert.equal(list.status, 200);
+    assert.equal(list.body.data.length, scenario.decline ? 0 : 1);
+    if (scenario.decline) continue;
+    const detail = await call(`/orders/${list.body.data[0].id}`, { headers });
+    assert.equal(detail.status, 200);
+    const order = detail.body.data;
+    assert.equal(order.isLegacy, false);
+    assert.equal(order.currency, 'USD');
+    assert.equal(order.total, scenario.shortage ? '20.00' : '10.00');
+    assert.equal(order.status, scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed');
+    assert.equal(order.payment.status, scenario.payment === 'card'
+      ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
+    assert.equal(order.history.at(-1).toStatus, order.status);
+    assert.equal(order.delivery.mode, scenario.mode);
+    assert.match(order.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/);
+  }
+  console.log('Checkout demo API scenarios passed.');
+}

@@ -26,7 +26,12 @@ export function createApp(db, secret) {
   const app = express();
   const auth = createAuthMiddleware(db, secret);
   const checkout = makeCheckout({ readCart, getDestination, deliveryDays, applyStockChange });
-  const cancelOrder = makeCancellation({ applyStockChange });
+  const cancelOrder = makeCancellation({
+    applyStockChange: (connection, change) => applyStockChange(connection, {
+      ...change,
+      movementType: change.movementType === 'cancel' ? 'cancellation' : change.movementType,
+    }),
+  });
 
   app.disable('x-powered-by');
   app.use((req, res, next) => {

@@ -20,7 +20,8 @@
     "db:setup": "npm run db:setup --workspace server",
     "smoke": "node scripts/smoke.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed:checkout": "node scripts/seed-checkout.mjs"
   },
   "devDependencies": {
     "prettier": "3.8.1"

@@ -6,8 +6,11 @@ import jwt from 'jsonwebtoken';
 import { runSetup } from '../src/database/setup.js';
 import { createApp } from '../src/app.js';
 import { makeCheckout } from '../src/services/checkout.js';
+import { putCartItem, readCartForCheckout } from '../src/services/cart.js';
 import { getDestination, deliveryDays } from '../src/services/locations.js';
 import { applyStockChange } from '../src/services/inventory.js';
+import { inTransaction } from '../src/utils/transaction.js';
+import { seedCheckoutScenarios, CHECKOUT_SCENARIOS } from '../src/database/seedCheckout.js';
 
 test(
   'shared seed and tracking/cancellation API on disposable MySQL',
@@ -84,27 +87,9 @@ test(
       } finally {
         connection.release();
       }
-      await pool.execute('INSERT INTO carts(customer_id) VALUES (?)', [owner.id]);
-      const [[cart]] = await pool.execute('SELECT id FROM carts WHERE customer_id=?', [owner.id]);
-      await pool.execute('INSERT INTO cart_items(cart_id,variant_id,quantity) VALUES (?,?,1)', [
-        cart.id,
-        variant.id,
-      ]);
+      const preparedCart = await putCartItem(pool, owner.id, variant.id, 1);
       const checkout = makeCheckout({
-        getDestination,
-        deliveryDays,
-        applyStockChange,
-        async readCart(conn, id) {
-          const [[entry]] = await conn.execute(
-            'SELECT id,version FROM carts WHERE customer_id=? FOR UPDATE',
-            [id],
-          );
-          const [items] = await conn.execute(
-            'SELECT variant_id AS variantId,quantity FROM cart_items WHERE cart_id=?',
-            [entry.id],
-          );
-          return { version: entry.version, items };
-        },
+        readCart: readCartForCheckout, getDestination, deliveryDays, applyStockChange,
       });
       const result = await checkout(
         pool,
@@ -114,7 +99,7 @@ test(
           storeId: store.id,
           paymentMethod: 'card',
           simulationToken: 'demo-approved',
-          cartVersion: 0,
+          cartVersion: preparedCart.version,
           requestKey: randomUUID(),
         },
       );
@@ -211,6 +196,139 @@ test(
           assert.equal(detail.delivery.estimatedDate, result.data.delivery.estimatedDate);
         },
       );
+      async function snapshot() {
+        const data = {};
+        for (const table of ['orders', 'payments', 'inventory_movements', 'order_status_history', 'carts', 'variants']) {
+          [data[table]] = await pool.query(`SELECT * FROM ${table} ORDER BY id`);
+        }
+        [data.items] = await pool.query('SELECT * FROM cart_items ORDER BY cart_id,variant_id');
+        [data.attempts] = await pool.query('SELECT * FROM checkout_requests ORDER BY customer_id,request_key');
+        return data;
+      }
+      await t.test('mounted checkout route uses the real cart and replays without duplicate effects', async () => {
+        const cart = await putCartItem(pool, owner.id, variant.id, 1);
+        const payload = { fulfillment: 'pickup', storeId: store.id, paymentMethod: 'cod',
+          cartVersion: cart.version, requestKey: randomUUID() };
+        assert.equal((await request('/orders', admin.id, payload)).status, 403);
+        const first = await request('/orders', owner.id, payload);
+        assert.equal(first.status, 201);
+        assert.equal(first.body.data.payment.status, 'pending');
+        const saved = await snapshot();
+        const repeat = await request('/orders', owner.id, payload);
+        assert.equal(repeat.status, 200);
+        assert.equal(repeat.body.data.id, first.body.data.id);
+        assert.deepEqual(await snapshot(), saved);
+        assert.equal((await request('/orders', owner.id, { ...payload, cartVersion: cart.version + 1 })).body.error.code,
+          'IDEMPOTENCY_CONFLICT');
+        const cancelled = await request(`/admin/orders/${first.body.data.id}/cancel`, admin.id,
+          { requestKey: randomUUID(), reason: 'Admin integration cancellation' });
+        assert.equal(cancelled.status, 200);
+        assert.equal(cancelled.body.data.payment.status, 'void');
+      });
+      await t.test('failure after real inventory movement rolls back the complete checkout', async () => {
+        const cart = await putCartItem(pool, owner.id, variant.id, 1);
+        const saved = await snapshot();
+        const failingCheckout = makeCheckout({ readCart: readCartForCheckout, getDestination, deliveryDays,
+          async applyStockChange(conn, movement) {
+            await applyStockChange(conn, movement);
+            throw new Error('Injected after real movement');
+          },
+        });
+        await assert.rejects(failingCheckout(pool, { id: owner.id, role: 'customer' }, {
+          fulfillment: 'pickup', storeId: store.id, paymentMethod: 'cod',
+          cartVersion: cart.version, requestKey: randomUUID(),
+        }), /Injected after real movement/);
+        assert.deepEqual(await snapshot(), saved);
+      });
+      await t.test('two real carts competing for the final unit cannot oversell', async () => {
+        await inTransaction(pool, async (conn) => {
+          const [[current]] = await conn.execute('SELECT stock FROM variants WHERE id=? FOR UPDATE', [variant.id]);
+          const delta = 1 - current.stock;
+          if (delta) await applyStockChange(conn, { variantId: variant.id, quantityDelta: delta,
+            movementType: 'adjustment', adminId: admin.id, referenceKey: randomUUID(), reason: 'Last unit test' });
+        });
+        const carts = await Promise.all([owner, other].map((actor) => putCartItem(pool, actor.id, variant.id, 1)));
+        const bodies = carts.map((cart) => ({ fulfillment: 'pickup', storeId: store.id,
+          paymentMethod: 'cod', cartVersion: cart.version, requestKey: randomUUID() }));
+        async function attempt(actor, body) {
+          for (let retry = 0; retry < 3; retry++) {
+            try { return await checkout(pool, { id: actor.id, role: 'customer' }, body); }
+            catch (error) { if (error.code !== 'TRANSACTION_RETRY' || retry === 2) throw error; }
+          }
+        }
+        const results = await Promise.all([attempt(owner, bodies[0]), attempt(other, bodies[1])]);
+        assert.deepEqual(results.map((result) => result.data.status).sort(), ['backordered', 'confirmed']);
+        const [[remaining]] = await pool.execute('SELECT stock FROM variants WHERE id=?', [variant.id]);
+        assert.equal(remaining.stock, 0);
+      });
+      await t.test('opt-in scenarios use real services and reruns preserve all effects', async () => {
+        // Crash after the durable payload is saved, before checkout commits.
+        let injected = false;
+        const interruptedPool = new Proxy(pool, {
+          get(target, property) {
+            if (property === 'getConnection') return async () => {
+              const connection = await target.getConnection();
+              return new Proxy(connection, {
+                get(conn, name) {
+                  if (name === 'execute') return async (sql, params) => {
+                    if (!injected && sql.includes('INSERT INTO orders')) {
+                      injected = true;
+                      throw new Error('Interrupted demo checkout');
+                    }
+                    return conn.execute(sql, params);
+                  };
+                  const value = conn[name];
+                  return typeof value === 'function' ? value.bind(conn) : value;
+                },
+              });
+            };
+            const value = target[property];
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        await assert.rejects(seedCheckoutScenarios(interruptedPool), /Interrupted demo checkout/);
+        const [[prepared]] = await pool.query("SELECT checkout_payload FROM checkout_demo_scenarios WHERE scenario_key='m3-v1-cod'");
+        assert.ok(prepared.checkout_payload);
+        const first = await seedCheckoutScenarios(pool);
+        assert.equal(first.length, 8);
+        for (const scenario of CHECKOUT_SCENARIOS) {
+          const outcome = first.find((item) => item.scenario === scenario.key);
+          const [[manifest]] = await pool.execute('SELECT * FROM checkout_demo_scenarios WHERE scenario_key=?', [scenario.key]);
+          const variants = typeof manifest.variant_ids === 'string' ? JSON.parse(manifest.variant_ids) : manifest.variant_ids;
+          for (const [index, id] of variants.entries()) {
+            const [[stock]] = await pool.execute('SELECT stock FROM variants WHERE id=?', [id]);
+            assert.equal(stock.stock, index === 1 ? 0 : scenario.shortage || scenario.cancel || scenario.decline ? 5 : 4);
+          }
+          if (scenario.decline) {
+            assert.equal(outcome.orderId, null);
+            const [[orders]] = await pool.execute('SELECT COUNT(*) AS count FROM orders WHERE customer_id=?', [outcome.customerId]);
+            assert.equal(orders.count, 0);
+            const [[cart]] = await pool.execute('SELECT COUNT(*) AS count FROM cart_items ci JOIN carts c ON c.id=ci.cart_id WHERE c.customer_id=?', [outcome.customerId]);
+            assert.equal(cart.count, 1);
+          } else {
+            const detail = await request(`/orders/${outcome.orderId}`, outcome.customerId);
+            assert.equal(detail.status, 200);
+            assert.equal(detail.body.data.status, scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed');
+            assert.equal(detail.body.data.payment.status, scenario.payment === 'card'
+              ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
+            const [[dates]] = await pool.execute('SELECT DATEDIFF(d.estimated_date,DATE(o.created_at)) AS days FROM deliveries d JOIN orders o ON o.id=d.order_id WHERE o.id=?', [outcome.orderId]);
+            assert.equal(dates.days, (scenario.main ? 5 : 7) + (scenario.shortage ? 3 : 0));
+            const [[movements]] = await pool.execute("SELECT COUNT(*) AS count FROM inventory_movements WHERE order_id=? AND movement_type='cancellation'", [outcome.orderId]);
+            assert.equal(movements.count, scenario.cancel && !scenario.shortage ? 1 : 0);
+          }
+        }
+        const saved = await snapshot();
+        assert.deepEqual(await seedCheckoutScenarios(pool), first);
+        assert.deepEqual(await snapshot(), saved);
+        // Explicit new cancellation after the initial seed must not be undone by reseeding.
+        const demo = first.find((item) => item.scenario === 'm3-v1-cod');
+        assert.equal((await request(`/orders/${demo.orderId}/cancel`, demo.customerId,
+          { requestKey: randomUUID(), reason: 'Changed after demonstration' })).status, 200);
+        const progressed = await snapshot();
+        const again = await seedCheckoutScenarios(pool);
+        assert.equal(again.find((item) => item.scenario === demo.scenario).outcome, 'cancelled');
+        assert.deepEqual(await snapshot(), progressed);
+      });
     } finally {
       if (server) await new Promise((resolve) => server.close(resolve));
       await pool.end();
