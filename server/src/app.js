@@ -9,6 +9,7 @@ import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
 import { createLocationRoutes } from './routes/locations.js';
 import { createInventoryRoutes } from './routes/inventory.js';
+import { createReportRoutes } from './routes/reports.js';
 import { createCartRoutes } from './routes/cart.js';
 import { createCheckoutRoutes } from './routes/checkout.js';
 import { makeCheckout } from './services/checkout.js';
@@ -16,7 +17,6 @@ import { makeCancellation } from './services/cancellation.js';
 import { readCartForCheckout as readCart } from './services/cart.js';
 import { getDestination, deliveryDays } from './services/locations.js';
 import { applyStockChange } from './services/inventory.js';
-
 
 // App creation is separate from listen(): tests can use an isolated database.
 export function createApp(db, secret) {
@@ -56,8 +56,9 @@ export function createApp(db, secret) {
   app.use('/api', createOrderRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
+  app.use('/api', createReportRoutes(db, auth));
   app.use('/api', createCheckoutRoutes(db, auth, { checkout, cancelOrder }));
-  
+
   // Error middleware must be last so every route uses the same error format.
   app.use((req, res, next) => next(new ApiError(404, 'NOT_FOUND', 'Resource not found.')));
   app.use(errorHandler);

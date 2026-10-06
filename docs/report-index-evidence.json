@@ -1,0 +1,29 @@
+{
+  "database": "MySQL 8.4",
+  "fixture": "Disposable database: 3 legacy samples, 4 reviewed checkout orders and 1000 controlled backorder copies outside the selected period",
+  "measurement": "EXPLAIN estimated rows, not elapsed runtime or a production guarantee",
+  "period": "Quarterly: 2026; upcoming: 2026-01-01 through 2026-01-31 inclusive",
+  "comparisons": [
+    {
+      "report": "quarterly-sales",
+      "before": { "table": "orders", "access": "ALL", "estimatedRows": 1007 },
+      "after": {
+        "table": "orders",
+        "access": "range",
+        "index": "idx_report_orders_currency_created",
+        "estimatedRows": 4
+      }
+    },
+    {
+      "report": "upcoming-deliveries",
+      "before": { "table": "orders", "access": "ALL", "estimatedRows": 1007 },
+      "after": {
+        "table": "deliveries",
+        "access": "range",
+        "index": "idx_report_delivery_estimated",
+        "estimatedRows": 3
+      }
+    }
+  ],
+  "rationale": "Currency plus creation date supports scoped order periods. Estimated date supports upcoming ranges. Existing unique order/payment keys and item/category foreign-key indexes serve joins; no extra join indexes were added. Temporary grouping/sorting remains expected."
+}
