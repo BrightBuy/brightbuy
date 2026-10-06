@@ -13,6 +13,7 @@ import { CustomersPage } from './pages/CustomersPage.jsx';
 import { AdminOverviewPage } from './pages/AdminOverviewPage.jsx';
 import { AdminInventoryPage } from './pages/AdminInventoryPage.jsx';
 import { AdminLocationsPage } from './pages/AdminLocationsPage.jsx';
+import { AdminReportsPage } from './pages/AdminReportsPage.jsx';
 
 // Public, customer and admin routes share layouts but have distinct access guards.
 export function App() {
@@ -45,6 +46,7 @@ export function App() {
               <Route path="products" element={<ProductsPage />} />
               <Route path="inventory" element={<AdminInventoryPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
+              <Route path="reports" element={<AdminReportsPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="orders" element={<OrdersPage admin />} />
               <Route path="orders/:id" element={<OrderDetailPage />} />

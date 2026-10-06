@@ -118,6 +118,21 @@ jobs:
             -e MYSQL_TEST_DATABASE=brightbuy_locations_test_deliverydays \
             api node --test server/test/delivery-days.test.js
 
+      - name: Test five reports and report indexes on MySQL
+        id: reports_mysql
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
+        run: |
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password \
+            m3-test-db mysql -uroot \
+            -e 'CREATE DATABASE brightbuy_reports_test_ci CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;'
+          docker compose run --rm --no-deps -T \
+            -e REPORTS_TEST_MYSQL=1 \
+            -e MYSQL_TEST_HOST=m3-test-db \
+            -e MYSQL_TEST_USER=root \
+            -e MYSQL_TEST_PASSWORD=m3_test_only_password \
+            -e MYSQL_TEST_DATABASE=brightbuy_reports_test_ci \
+            api node --test server/test/reports.mysql.test.js
+
       - name: Start application with migrations and demo seed
         id: application
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -156,6 +171,7 @@ jobs:
               "locations_schema": "Location schema and migration retries",
               "locations_api": "Location API and migrations",
               "delivery_days": "Delivery estimates and migrations",
+              "reports_mysql": "Five reports and report indexes",
               "application": "Application startup and seed",
               "smoke": "Live application smoke tests",
           }
