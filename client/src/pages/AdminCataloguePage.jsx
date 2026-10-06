@@ -86,12 +86,13 @@ function ProductsPanel() {
   if (selected === 'new') {
     return (
       <ProductForm
-        catState={useCategories()}
+
         onSaved={handleSaved}
         onCancel={() => setSelected(null)}
       />
     );
   }
+
 
   if (selected) {
     return (
@@ -162,7 +163,7 @@ function ProductsPanel() {
 function useCategories() {
   const [cats, setCats] = useState([]);
   useEffect(() => {
-    api('/categories').then(setCats).catch(() => {});
+    api('/categories').then(setCats).catch(() => { });
   }, []);
   return cats;
 }
@@ -255,7 +256,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
   const [localProduct, setLocalProduct] = useState(product);
 
   useEffect(() => {
-    api('/admin/attributes').then(setAttrList).catch(() => {});
+    api('/admin/attributes').then(setAttrList).catch(() => { });
   }, []);
 
   // Reload full product detail after each mutation
