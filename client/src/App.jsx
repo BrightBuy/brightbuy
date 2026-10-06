@@ -6,14 +6,19 @@ import { MainLayout } from './components/MainLayout.jsx';
 import { ProductsPage } from './pages/ProductsPage.jsx';
 import { ProductDetailPage } from './pages/ProductDetailPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
+import { RegisterPage } from './pages/RegisterPage.jsx';
+import { ProfilePage } from './pages/ProfilePage.jsx';
+import { AddressesPage } from './pages/AddressesPage.jsx';
+import { CartPage } from './pages/CartPage.jsx';
 import { OrdersPage } from './pages/OrdersPage.jsx';
 import { OrderDetailPage } from './pages/OrderDetailPage.jsx';
-import { AddressesPage } from './pages/AddressesPage.jsx';
 import { CustomersPage } from './pages/CustomersPage.jsx';
 import { AdminOverviewPage } from './pages/AdminOverviewPage.jsx';
 import { AdminInventoryPage } from './pages/AdminInventoryPage.jsx';
 import { AdminLocationsPage } from './pages/AdminLocationsPage.jsx';
 import { AdminReportsPage } from './pages/AdminReportsPage.jsx';
+import { CheckoutPage } from './pages/CheckoutPage.jsx';
+import { CustomerRoute } from './components/CustomerRoute.jsx';
 
 // Public, customer and admin routes share layouts but have distinct access guards.
 export function App() {
@@ -23,12 +28,17 @@ export function App() {
         <Routes>
           <Route element={<MainLayout />}>
             <Route index element={<ProductsPage />} />
+            <Route path="products" element={<ProductsPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
             <Route element={<ProtectedRoute />}>
+              <Route path="cart" element={<CartPage />} />
+              <Route path="account/profile" element={<ProfilePage />} />
               <Route path="account/orders" element={<OrdersPage />} />
               <Route path="account/orders/:id" element={<OrderDetailPage />} />
               <Route path="account/addresses" element={<AddressesPage />} />
+              <Route path="addresses" element={<AddressesPage />} />
             </Route>
             <Route
               path="*"
@@ -39,6 +49,9 @@ export function App() {
                 </>
               }
             />
+            <Route element={<CustomerRoute />}>
+              <Route path="checkout" element={<CheckoutPage />} />
+            </Route>
           </Route>
           <Route element={<ProtectedRoute admin />}>
             <Route path="admin" element={<MainLayout admin />}>
