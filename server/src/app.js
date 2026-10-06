@@ -9,10 +9,11 @@ import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
 import { createLocationRoutes } from './routes/locations.js';
 import { createInventoryRoutes } from './routes/inventory.js';
+import { createCartRoutes } from './routes/cart.js';
 import { createCheckoutRoutes } from './routes/checkout.js';
 import { makeCheckout } from './services/checkout.js';
 import { makeCancellation } from './services/cancellation.js';
-import { readCart } from './services/cart.js';
+import { readCartForCheckout as readCart } from './services/cart.js';
 import { getDestination, deliveryDays } from './services/locations.js';
 import { applyStockChange } from './services/inventory.js';
 
@@ -46,6 +47,7 @@ export function createApp(db, secret) {
   app.use('/api', createCatalogueRoutes(db));
   app.use('/api', createCatalogueAdminRoutes(db, auth));
   app.use('/api', createAccountRoutes(db, auth));
+  app.use('/api', createCartRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));

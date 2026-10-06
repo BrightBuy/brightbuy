@@ -62,9 +62,17 @@ export async function seedDemoData(connection) {
       (3,2,5,'Canvas Backpack','Sand / 20 L',1,6800),
       (4,3,2,'Everyday T-shirt','White / Large',1,2500)`);
     await reconcileLegacyCatalogue(connection);
+    await connection.query(`
+      INSERT IGNORE INTO admin_profiles (id, staff_role)
+      SELECT id, 'administrator' FROM customers WHERE role = 'admin'
+    `);
     await connection.execute('INSERT INTO schema_migrations (version) VALUES (?)', ['demo-v1']);
   } else {
     // Run reconciliation even when demo-v1 is already seeded to reconcile legacy products/variants
     await reconcileLegacyCatalogue(connection);
+    await connection.query(`
+      INSERT IGNORE INTO admin_profiles (id, staff_role)
+      SELECT id, 'administrator' FROM customers WHERE role = 'admin'
+    `);
   }
 }

@@ -41,7 +41,7 @@ function createMockDb() {
 
   const connection = {
     async query(sql) {
-      if (sql.includes('INSERT INTO categories')) {
+      if (sql.includes('INSERT INTO categories') || sql.includes('INSERT IGNORE INTO categories')) {
         if (!categories.some((c) => c.id === 1)) {
           categories.push({ id: 1, name: 'Everyday Essentials' });
         }
