@@ -9,6 +9,8 @@ import { createAccountRoutes } from './routes/account.js';
 import { createOrderRoutes } from './routes/orders.js';
 import { createLocationRoutes } from './routes/locations.js';
 import { createInventoryRoutes } from './routes/inventory.js';
+import { createFulfilmentRoutes } from './routes/fulfilment.js';
+
 import { createCheckoutRoutes } from './routes/checkout.js';
 import { makeCheckout } from './services/checkout.js';
 import { makeCancellation } from './services/cancellation.js';
@@ -47,10 +49,11 @@ export function createApp(db, secret) {
   app.use('/api', createCatalogueAdminRoutes(db, auth));
   app.use('/api', createAccountRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
+  app.use('/api', createFulfilmentRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
   app.use('/api', createCheckoutRoutes(db, auth, { checkout, cancelOrder }));
-  
+
   // Error middleware must be last so every route uses the same error format.
   app.use((req, res, next) => next(new ApiError(404, 'NOT_FOUND', 'Resource not found.')));
   app.use(errorHandler);
