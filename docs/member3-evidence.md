@@ -69,6 +69,14 @@
 ## Build the customer checkout screen
 
 - feature/checkout-payments
-- 
+- 608a777e29e9a6592f33ad3731636b277239c028
 
 | `docker compose run --build --rm --no-deps client npm run build --workspace client` |
+
+
+## Add cancellation to the order screen
+
+- feature/checkout-payments
+- 
+
+| `docker compose run --build --rm --no-deps api npm run build --workspace client` |

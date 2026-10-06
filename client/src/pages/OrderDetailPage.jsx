@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { formatMoney, statusLabel } from '../utils/format.js';
-import { api } from '../api.js';
-import { postAttempt } from '../utils/post-attempt.js';
-import { attemptPolicy } from '../utils/attempt-policy.js';
-import { calendarDate, trackingStatus, canCancel, isOverdue } from '../utils/order-tracking.js';
+import { calendarDate, trackingStatus, isOverdue } from '../utils/order-tracking.js';
+import { CancelOrderForm } from '../components/CancelOrderForm.jsx';
 import './OrderDetailPage.css';
 
 function utcTime(value) {
@@ -25,72 +23,10 @@ export function OrderDetailPage() {
   const { id } = useParams();
   const state = useData(`/orders/${id}`);
   const { user } = useAuth();
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [reason, setReason] = useState('');
-  const [attempt, setAttempt] = useState(null);
-  const [success, setSuccess] = useState('');
-  const storageKey = `brightbuy:cancel:${user.id}:${id}`;
-  useEffect(() => {
-    setError('');
-    setSuccess('');
-    setReason('');
-    setAttempt(null);
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(storageKey));
-      if (saved && typeof saved.requestKey === 'string' && typeof saved.reason === 'string') {
-        setAttempt(saved);
-        setReason(saved.reason);
-      }
-    } catch {
-      sessionStorage.removeItem(storageKey);
-    }
-  }, [storageKey]);
-
-  async function cancel(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    setSuccess('');
-    try {
-      const payload = attempt || { requestKey: crypto.randomUUID(), reason: reason.trim() };
-      // Persist before sending so an uncertain result can replay the same action.
-      sessionStorage.setItem(storageKey, JSON.stringify(payload));
-      setAttempt(payload);
-      await postAttempt(
-        api,
-        `${user.role === 'admin' ? '/admin' : ''}/orders/${id}/cancel`,
-        payload,
-      );
-      sessionStorage.removeItem(storageKey);
-      setAttempt(null);
-      setReason('');
-      setSuccess('Order cancelled. Payment and stock changes are recorded.');
-      state.reload();
-    } catch (failure) {
-      const retry = attemptPolicy(failure) === 'retry';
-      setError(
-        failure.message + (retry ? ' Retry the same cancellation to confirm its result.' : ''),
-      );
-      if (!retry) {
-        sessionStorage.removeItem(storageKey);
-        setAttempt(null);
-      }
-      state.reload();
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <>
       <h1>Order #{id}</h1>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {success && <p role="status">{success}</p>}
       <DataState state={state}>
         {(order) => {
           const destination = order.delivery?.destinationSnapshot || order.addressSnapshot;
@@ -239,32 +175,18 @@ export function OrderDetailPage() {
                   </ol>
                 </section>
               )}
-              {(canCancel(order) || attempt) && (
-                <form className="order-cancel" onSubmit={cancel}>
-                  <h2>Cancel order</h2>
-                  <p>
-                    Cancellation is available before processing. Simulated card payments are
-                    refunded; pending cash payments are voided.
-                  </p>
-                  <label>
-                    Cancellation reason
-                    <input
-                      required
-                      maxLength={200}
-                      value={reason}
-                      disabled={busy || Boolean(attempt)}
-                      onChange={(event) => setReason(event.target.value)}
+              {!order.isLegacy &&
+                ['backordered', 'confirmed'].includes(order.status) && (
+                  <section className="order-cancel" aria-label="Cancel order">
+                    <h2>Cancel order</h2>
+                    <CancelOrderForm
+                      key={order.id}
+                      orderId={order.id}
+                      admin={user.role === 'admin'}
+                      onSuccess={state.reload}
                     />
-                  </label>
-                  <button disabled={busy || !reason.trim()}>
-                    {busy
-                      ? 'Cancelling…'
-                      : attempt
-                        ? 'Retry same cancellation'
-                        : 'Confirm cancellation'}
-                  </button>
-                </form>
-              )}
+                  </section>
+                )}
               {user.role === 'admin' && !order.isLegacy && (
                 <p>
                   Use the fulfilment workflow for stock allocation and delivery/pickup completion.
