@@ -259,3 +259,9 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.checkout { max-width: 850px; margin: auto; }
+.checkout fieldset { display: grid; gap: 18px; border: 1px solid #dce3dc; padding: 20px; }
+.checkout select { width: 100%; padding: 12px; border: 1px solid #b9c7bd; border-radius: 7px; font: inherit; }
+.checkout-consent { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+.checkout-consent input { width: auto; flex: 0 0 auto; margin-top: 5px; }
