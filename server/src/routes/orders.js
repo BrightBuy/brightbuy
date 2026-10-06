@@ -1,11 +1,8 @@
 import { Router } from 'express';
 import { ApiError, positiveId } from '../errors.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { nextStatuses } from '@brightbuy/contracts';
 import { presentOrder as presentTracking } from '../services/order-presenter.js';
 import { inTransaction } from '../utils/transaction.js';
-import { makeCancellation } from '../services/cancellation.js';
-import { applyStockChange } from '../services/inventory.js';
 
 const ORDER_SELECT = `
   SELECT id, customer_id AS customerId, status, fulfillment,
@@ -19,14 +16,6 @@ function orderNotFound() {
 
 export function createOrderRoutes(db, requireAuthentication) {
   const router = Router();
-  const cancelOrder = makeCancellation({
-    // M3 names the action "cancel"; M4's stored movement enum is "cancellation".
-    applyStockChange: (connection, change) =>
-      applyStockChange(connection, {
-        ...change,
-        movementType: change.movementType === 'cancel' ? 'cancellation' : change.movementType,
-      }),
-  });
   async function trackingList(admin, customerId) {
     return inTransaction(db, async (connection) => {
       const [rows] = await connection.execute(
@@ -60,14 +49,6 @@ export function createOrderRoutes(db, requireAuthentication) {
     });
     res.json({ data });
   });
-  router.post('/orders/:id/cancel', requireAuthentication, async (req, res) => {
-    if (req.user.role !== 'customer')
-      throw new ApiError(403, 'FORBIDDEN', 'Customer access required.');
-    res.json({ data: await cancelOrder(db, req.user, positiveId(req.params.id), req.body) });
-  });
-  router.post('/admin/orders/:id/cancel', requireAuthentication, requireAdmin, async (req, res) => {
-    res.json({ data: await cancelOrder(db, req.user, positiveId(req.params.id), req.body) });
-  });
   router.patch(
     '/admin/orders/:id/status',
     requireAuthentication,
@@ -83,7 +64,6 @@ export function createOrderRoutes(db, requireAuthentication) {
       ) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'Provide only a status string.');
       }
-      const target = body.status;
       const data = await inTransaction(db, async (connection) => {
         const [orders] = await connection.execute(
           `${ORDER_SELECT} WHERE id = ? FOR UPDATE`,
@@ -92,38 +72,12 @@ export function createOrderRoutes(db, requireAuthentication) {
         const order = orders[0];
         if (!order) throw orderNotFound();
 
-        // Preserve the existing foundation-only writer. Project orders need
-        // dedicated actions that update payment/inventory/history together.
-        if (order.stockState != null || order.wasOutOfStock != null) {
-          throw new ApiError(
-            409,
-            'PROJECT_ORDER_ACTION_REQUIRED',
-            'Use the project fulfilment or cancellation action.',
-          );
+        if (order.stockState == null && order.wasOutOfStock == null) {
+          throw new ApiError(409, 'LEGACY_ORDER_REQUIRES_MIGRATION', 'Legacy orders are read-only.');
         }
-        const allowed = nextStatuses(order.status, order.fulfillment);
-        if (!allowed.includes(target)) {
-          throw new ApiError(
-            409,
-            'INVALID_STATUS_TRANSITION',
-            'This order cannot move to that status.',
-            [{ allowed }],
-          );
-        }
-
-        const [updated] = await connection.execute(
-          'UPDATE orders SET status = ? WHERE id = ? AND status = ?',
-          [target, id, order.status],
-        );
-        if (updated.affectedRows !== 1) {
-          throw new ApiError(409, 'ORDER_CHANGED', 'The order changed; reload and try again.');
-        }
-        await connection.execute(
-          `INSERT INTO order_status_history (order_id, from_status, to_status, actor_id)
-           VALUES (?, ?, ?, ?)`,
-          [id, order.status, target, req.user.id],
-        );
-        return presentTracking(connection, id);
+        // M4's dedicated fulfilment actions must update stock/payment/history together.
+        throw new ApiError(409, 'PROJECT_ORDER_ACTION_REQUIRED',
+          'Use the project fulfilment or cancellation action.');
       });
       res.json({ data });
     },

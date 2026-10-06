@@ -199,21 +199,36 @@ test('health reports database unavailability without leaking details', async () 
     failDb = false;
   }
 });
-test('status transitions reject skipping, extra input and concurrent writes', async () => {
-  const update = (body) =>
-    request('/api/admin/orders/1/status', { id: 2, method: 'PATCH', body: JSON.stringify(body) });
-  assert.equal((await update({ status: 'delivered' })).status, 409);
+test('legacy status changes are rejected without writing status or history', async () => {
+  const update = (body) => request('/api/admin/orders/1/status', {
+    id: 2, method: 'PATCH', body: JSON.stringify(body),
+  });
   assert.equal((await update({ status: 'confirmed', total: 1 })).status, 400);
-  concurrent = true;
-  assert.equal((await update({ status: 'confirmed' })).body.error.code, 'ORDER_CHANGED');
-  assert.equal(statusHistory.length, 0);
-  concurrent = false;
-  const r = await update({ status: 'confirmed' });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.data.status, 'confirmed');
-  assert.deepEqual(statusHistory, [{ orderId: 1, fromStatus: 'pending', toStatus: 'confirmed', actorId: 2 }]);
-  assert.equal((await update({ status: 'pending' })).status, 409);
+  for (const status of ['confirmed', 'cancelled', 'delivered']) {
+    const result = await update({ status });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.error.code, 'LEGACY_ORDER_REQUIRES_MIGRATION');
+    assert.equal(order.status, 'pending');
+    assert.deepEqual(statusHistory, []);
+  }
 });
+
+test('project orders cannot bypass dedicated actions using generic status PATCH', async () => {
+  order.stockState = 'allocated';
+  order.wasOutOfStock = 0;
+  try {
+    const result = await request('/api/admin/orders/1/status', {
+      id: 2, method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }),
+    });
+    assert.equal(result.status, 409);
+    assert.equal(result.body.error.code, 'PROJECT_ORDER_ACTION_REQUIRED');
+    assert.deepEqual(statusHistory, []);
+  } finally {
+    delete order.stockState;
+    delete order.wasOutOfStock;
+  }
+});
+
 test('delivery and pickup paths are exclusive and terminal states cannot change', () => {
   assert.deepEqual(nextStatuses('processing', 'delivery'), ['shipped']);
   assert.deepEqual(nextStatuses('processing', 'pickup'), ['ready_for_pickup']);
