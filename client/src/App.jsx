@@ -14,6 +14,7 @@ import { OrdersPage } from './pages/OrdersPage.jsx';
 import { OrderDetailPage } from './pages/OrderDetailPage.jsx';
 import { CustomersPage } from './pages/CustomersPage.jsx';
 import { AdminOverviewPage } from './pages/AdminOverviewPage.jsx';
+import { AdminCataloguePage } from './pages/AdminCataloguePage.jsx';
 import { AdminInventoryPage } from './pages/AdminInventoryPage.jsx';
 import { AdminLocationsPage } from './pages/AdminLocationsPage.jsx';
 import { AdminFulfilmentPage } from './pages/AdminFulfilmentPage.jsx';
@@ -57,7 +58,7 @@ export function App() {
           <Route element={<ProtectedRoute admin />}>
             <Route path="admin" element={<MainLayout admin />}>
               <Route index element={<AdminOverviewPage />} />
-              <Route path="products" element={<ProductsPage />} />
+              <Route path="products" element={<AdminCataloguePage />} />
               <Route path="inventory" element={<AdminInventoryPage />} />
               <Route path="fulfilment" element={<AdminFulfilmentPage />} />
               <Route path="locations" element={<AdminLocationsPage />} />
