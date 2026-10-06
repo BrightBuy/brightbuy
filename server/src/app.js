@@ -12,6 +12,7 @@ import { createInventoryRoutes } from './routes/inventory.js';
 import { createReportRoutes } from './routes/reports.js';
 import { createCartRoutes } from './routes/cart.js';
 import { createCheckoutRoutes } from './routes/checkout.js';
+import { createFulfilmentRoutes } from './routes/fulfilment.js';
 import { makeCheckout } from './services/checkout.js';
 import { makeCancellation } from './services/cancellation.js';
 import { readCartForCheckout as readCart } from './services/cart.js';
@@ -54,6 +55,7 @@ export function createApp(db, secret) {
   app.use('/api', createAccountRoutes(db, auth));
   app.use('/api', createCartRoutes(db, auth));
   app.use('/api', createOrderRoutes(db, auth));
+  app.use('/api', createFulfilmentRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
   app.use('/api', createReportRoutes(db, auth));
