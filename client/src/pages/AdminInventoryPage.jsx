@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
+import { useAuth } from '../auth/AuthProvider.jsx';
+import { pendingAttempt } from '../utils/interactions.js';
+import { attemptPolicy } from '../utils/attempt-policy.js';
+import { postAttempt } from '../utils/post-attempt.js';
 import { api } from '../api.js';
 import { formatCentralTime } from '../utils/date-time.js';
 
 export function AdminInventoryPage() {
+    const historyRequest = useRef(0);
+    const { user } = useAuth();
+    const submitting = useRef(false);
+    const [adjustmentAttempt, setAdjustmentAttempt] = useState(null);
+    const store = (id) => pendingAttempt(sessionStorage, 'brightbuy:stock:' + user.id + ':' + id);
     const [lowStockOnly, setLowStockOnly] = useState(false);
     const [threshold, setThreshold] = useState(5);
 
@@ -28,57 +37,65 @@ export function AdminInventoryPage() {
     // Open adjustment form with a fresh UUID
     function openAdjustment(variant) {
         setAdjustingVariant(variant);
-        setQuantityDelta('');
-        setReason('');
+        const previous = store(variant.id).read();
+        setAdjustmentAttempt(previous);
+        setQuantityDelta(previous ? String(previous.quantityDelta) : '');
+        setReason(previous?.reason || '');
         setError('');
-        setRequestKey(crypto.randomUUID());
+        setRequestKey(previous?.requestKey || crypto.randomUUID());
     }
 
     // Handle stock adjustment submit
     async function handleAdjustSubmit(e) {
         e.preventDefault();
+        if (submitting.current || !adjustingVariant) return;
+        submitting.current = true;
         setBusy(true);
         setError('');
 
         const delta = Number(quantityDelta);
         if (!Number.isInteger(delta) || delta === 0) {
             setError('Quantity delta must be a non-zero integer.');
+            submitting.current = false;
             setBusy(false);
             return;
         }
 
         try {
-            await api(`/admin/variants/${adjustingVariant.id}/stock-adjustments`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    quantityDelta: delta,
-                    reason: reason.trim(),
-                    requestKey,
-                }),
-            });
+            const payload = adjustmentAttempt || store(adjustingVariant.id).save({ quantityDelta: delta, reason: reason.trim(), requestKey });
+            setAdjustmentAttempt(payload);
+            await postAttempt(api, '/admin/variants/' + adjustingVariant.id + '/stock-adjustments', payload);
+            store(adjustingVariant.id).clear();
+            setAdjustmentAttempt(null);
 
             // Reload inventory data & close form
             state.reload();
             setAdjustingVariant(null);
         } catch (err) {
             setError(err.message);
+            if (attemptPolicy(err) === 'review') {
+                store(adjustingVariant.id).clear(); setAdjustmentAttempt(null); setRequestKey(crypto.randomUUID());
+            }
         } finally {
+            submitting.current = false;
             setBusy(false);
         }
     }
 
     // Open history view
     async function openHistory(variant) {
+        const request = ++historyRequest.current;
         setHistoryVariant(variant);
+        setHistoryMovements([]);
         setLoadingHistory(true);
         setError('');
         try {
             const response = await api(`/admin/variants/${variant.id}/stock-movements`);
-            setHistoryMovements(response.data || []);
+            if (request === historyRequest.current) setHistoryMovements(response);
         } catch (err) {
-            setError(err.message);
+            if (request === historyRequest.current) setError(err.message);
         } finally {
-            setLoadingHistory(false);
+            if (request === historyRequest.current) setLoadingHistory(false);
         }
     }
 
@@ -137,6 +154,7 @@ export function AdminInventoryPage() {
                                     type="number"
                                     required
                                     placeholder="+5 or -3"
+                                    disabled={busy || Boolean(adjustmentAttempt)}
                                     value={quantityDelta}
                                     onChange={(e) => setQuantityDelta(e.target.value)}
                                 />
@@ -149,6 +167,7 @@ export function AdminInventoryPage() {
                                     required
                                     maxLength="200"
                                     placeholder="e.g. Restock shipment, Damaged item"
+                                    disabled={busy || Boolean(adjustmentAttempt)}
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
                                 />
@@ -156,7 +175,7 @@ export function AdminInventoryPage() {
 
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                                 <button type="submit" disabled={busy}>
-                                    {busy ? 'Saving...' : 'Apply Stock Change'}
+                                    {busy ? 'Saving...' : adjustmentAttempt ? 'Retry same adjustment' : 'Apply Stock Change'}
                                 </button>
                                 <button
                                     type="button"
@@ -177,7 +196,7 @@ export function AdminInventoryPage() {
                 <article className="card" style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h2>Movement Audit History: {historyVariant.productTitle} ({historyVariant.title})</h2>
-                        <button className="secondary" onClick={() => setHistoryVariant(null)}>
+                        <button className="secondary" onClick={() => { historyRequest.current++; setHistoryVariant(null); }}>
                             Close History
                         </button>
                     </div>
@@ -252,7 +271,7 @@ export function AdminInventoryPage() {
                                                 <span className="badge">{v.active ? 'Active' : 'Inactive'}</span>
                                             </td>
                                             <td style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button className="secondary" onClick={() => openAdjustment(v)}>
+                                                <button className="secondary" disabled={busy} onClick={() => openAdjustment(v)}>
                                                     Adjust
                                                 </button>
                                                 <button className="secondary" onClick={() => openHistory(v)}>

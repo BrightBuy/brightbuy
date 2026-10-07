@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api.js';
 
 export function AddressesPage() {
+  const mutation = useRef(false);
   const [addresses, setAddresses] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export function AddressesPage() {
     try {
       const [addrRes, cityRes] = await Promise.all([
         api('/addresses'),
-        api('/cities').catch(() => []), // Fallback if cities endpoint unavailable
+        api('/cities'),
       ]);
       setAddresses(addrRes || []);
       setCities((cityRes || []).filter((c) => c.isActive !== false));
@@ -78,6 +79,8 @@ export function AddressesPage() {
 
   async function handleSave(event) {
     event.preventDefault();
+    if (mutation.current) return;
+    mutation.current = true;
     setFormError('');
     setBusy(true);
 
@@ -108,38 +111,43 @@ export function AddressesPage() {
     } catch (err) {
       setFormError(err.message || 'Failed to save address.');
     } finally {
+      mutation.current = false;
       setBusy(false);
     }
   }
 
   async function handleSetDefault(id) {
+    if (mutation.current) return;
+    mutation.current = true; setBusy(true);
     try {
       await api(`/addresses/${id}/default`, { method: 'PUT' });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Failed to set default address.');
-    }
+      setError(err.message || 'Failed to set default address.');
+    } finally { mutation.current = false; setBusy(false); }
   }
 
   async function handleDelete(id) {
+    if (mutation.current) return;
     if (!window.confirm('Are you sure you want to delete this address?')) return;
+    mutation.current = true; setBusy(true);
     try {
       await api(`/addresses/${id}`, { method: 'DELETE' });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Failed to delete address.');
-    }
+      setError(err.message || 'Failed to delete address.');
+    } finally { mutation.current = false; setBusy(false); }
   }
 
   if (loading) return <p>Loading addresses…</p>;
-  if (error) return <p className="error" role="alert">{error}</p>;
+  if (error) return <><p className="error" role="alert">{error}</p><button onClick={loadData}>Retry</button></>;
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1>Address Book</h1>
         {!isEditing && (
-          <button onClick={startAdd} className="button">
+          <button disabled={busy || !cities.length} onClick={startAdd} className="button">
             + Add New Address
           </button>
         )}
@@ -238,8 +246,8 @@ export function AddressesPage() {
             )}
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-              <button disabled={busy}>{busy ? 'Saving…' : 'Save Address'}</button>
-              <button type="button" className="button secondary" onClick={resetForm}>
+              <button disabled={busy || !cities.length}>{busy ? 'Saving…' : 'Save Address'}</button>
+              <button type="button" className="button secondary" disabled={busy} onClick={resetForm}>
                 Cancel
               </button>
             </div>
@@ -299,7 +307,7 @@ export function AddressesPage() {
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
                 {!address.isDefault && address.isEligible && (
                   <button
-                    onClick={() => handleSetDefault(address.id)}
+                    disabled={busy} onClick={() => handleSetDefault(address.id)}
                     className="button secondary"
                     style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
                   >
@@ -307,7 +315,7 @@ export function AddressesPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => startEdit(address)}
+                  disabled={busy} onClick={() => startEdit(address)}
                   className="button secondary"
                   style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
                 >

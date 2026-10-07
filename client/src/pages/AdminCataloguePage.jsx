@@ -1,4 +1,5 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
@@ -45,7 +46,7 @@ export function AdminCataloguePage() {
       <h1>Catalogue Management</h1>
       <p className="intro">
         Manage products, variants, categories and attributes. Stock adjustments are handled in{' '}
-        <a href="/admin/inventory">Inventory</a>.
+        <Link to="/admin/inventory">Inventory</Link>.
       </p>
 
       {/* Tab bar */}
@@ -97,6 +98,7 @@ function ProductsPanel() {
   if (selected) {
     return (
       <ProductEditor
+        key={selected.id}
         product={selected}
         onSaved={handleSaved}
         onCancel={() => setSelected(null)}
@@ -160,11 +162,11 @@ function ProductsPanel() {
 // Hook: category list for selects
 // ─────────────────────────────────────────────────────────────────────────────
 
-function useCategories() {
+function useCategories(setError) {
   const [cats, setCats] = useState([]);
   useEffect(() => {
-    api('/categories').then(setCats).catch(() => { });
-  }, []);
+    api('/categories').then(setCats).catch((error) => setError(error.message));
+  }, [setError]);
   return cats;
 }
 
@@ -173,8 +175,8 @@ function useCategories() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProductForm({ onSaved, onCancel }) {
-  const cats = useCategories();
-  const { busy, error, call } = useApi();
+  const { busy, error, call, setError } = useApi();
+  const cats = useCategories(setError);
   const [form, setForm] = useState({
     sku: '', name: '', description: '', brand: '', categoryIds: [],
   });
@@ -243,9 +245,9 @@ function ProductForm({ onSaved, onCancel }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProductEditor({ product, onSaved, onCancel }) {
-  const cats = useCategories();
   const [attrList, setAttrList] = useState([]);
   const { busy, error, call, setError } = useApi();
+  const cats = useCategories(setError);
   const [form, setForm] = useState({
     name: product.name,
     description: product.description ?? '',
@@ -256,7 +258,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
   const [localProduct, setLocalProduct] = useState(product);
 
   useEffect(() => {
-    api('/admin/attributes').then(setAttrList).catch(() => { });
+    api('/admin/attributes').then(setAttrList).catch((error) => setError(error.message));
   }, []);
 
   // Reload full product detail after each mutation
@@ -299,7 +301,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
     const result = await call('PATCH', `/admin/variants/${v.id}/active`, {
       isActive: !v.isActive,
     });
-    if (result) await reload();
+    if (result) { try { await reload(); } catch (error) { setError(error.message); } }
   }
 
   function toggleCat(id) {

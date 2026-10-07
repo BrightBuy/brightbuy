@@ -101,3 +101,77 @@ test('cancellation while reading response JSON remains an AbortError', async () 
   });
   await assert.rejects(client.api('/products'), { name: 'AbortError' });
 });
+
+
+test('successful old-session responses cannot continue work in a different session', async () => {
+  for (const replacement of [null, 'new-token', 'old-token']) {
+    let respond;
+    const client = createApiClient({ fetchImpl: () => new Promise(resolve => { respond = resolve; }) });
+    client.setToken('old-token');
+    const request = client.api('/cart');
+    client.setToken(replacement);
+    respond(Response.json({ data: { items: [{ variantId: 1, quantity: 8 }] } }));
+    await assert.rejects(request, { code: 'UNAUTHENTICATED' });
+  }
+});
+
+test('a previous login cannot expire a new session even when the server reuses its token', async () => {
+  let respond;
+  let expirations = 0;
+  const client = createApiClient({
+    fetchImpl: () => new Promise(resolve => { respond = resolve; }),
+    onUnauthorized: () => { expirations++; },
+  });
+  client.setToken('same-token');
+  const request = client.api('/orders');
+  client.setToken('same-token');
+  respond(Response.json({ error: { message: 'Expired' } }, { status: 401 }));
+  await assert.rejects(request, { status: 401 });
+  assert.equal(expirations, 0);
+});
+
+
+test('session changes while reading the response body discard the old account data', async () => {
+  let finishBody;
+  let bodyStarted;
+  const reading = new Promise(resolve => { bodyStarted = resolve; });
+  let expirations = 0;
+  const client = createApiClient({
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: () => new Promise(resolve => { finishBody = resolve; bodyStarted(); }),
+    }),
+    onUnauthorized: () => { expirations++; },
+  });
+  client.setToken('first-account');
+  const request = client.api('/account/profile');
+  const rejected = assert.rejects(request, { code: 'UNAUTHENTICATED' });
+  await reading;
+  client.setToken('second-account');
+  finishBody({ data: { id: 1, name: 'Old account' } });
+  await rejected;
+  assert.equal(expirations, 0, 'Discarding an old response must not sign out the new account');
+});
+
+test('an account switch during add-to-cart never writes the old quantity to the new cart', async () => {
+  const { addCartItem } = await import('../src/utils/interactions.js');
+  let respond;
+  let started;
+  const requested = new Promise(resolve => { started = resolve; });
+  const calls = [];
+  const client = createApiClient({
+    fetchImpl: (url, options) => {
+      calls.push({ url, method: options.method || 'GET' });
+      return new Promise(resolve => { respond = resolve; started(); });
+    },
+  });
+  client.setToken('first-account');
+  const adding = addCartItem(client.api, 7, 1);
+  const rejected = assert.rejects(adding, { code: 'UNAUTHENTICATED' });
+  await requested;
+  client.setToken('second-account');
+  respond(Response.json({ data: { items: [{ variantId: 7, quantity: 8 }] } }));
+  await rejected;
+  assert.deepEqual(calls, [{ url: '/api/cart', method: 'GET' }]);
+});
