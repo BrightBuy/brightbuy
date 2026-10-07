@@ -6,6 +6,18 @@ export function MainLayout({ admin = false }) {
   const { user, logout } = useAuth();
   return (
     <>
+      {!admin && (
+        <div className="top-promo-bar">
+          <div className="promo-left">
+            <span className="promo-badge">SuperDeals</span>
+            <span>⚡ Up to 50% OFF tech deals · Free express delivery over $50</span>
+          </div>
+          <div className="promo-right">
+            <span>✨ Choice verified items</span>
+            <span>🛡️ 30-Day Buyer Protection</span>
+          </div>
+        </div>
+      )}
       <header>
         <Link className="brand" to="/">
           Bright<span>Buy</span>
@@ -15,7 +27,9 @@ export function MainLayout({ admin = false }) {
             Shop
           </NavLink>
           {user && user.role === 'customer' && (
-            <NavLink to="/cart">Cart</NavLink>
+            <NavLink to="/cart">
+              🛒 Cart
+            </NavLink>
           )}
           {user && (
             <>

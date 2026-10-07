@@ -265,3 +265,1280 @@ footer {
 .checkout select { width: 100%; padding: 12px; border: 1px solid #b9c7bd; border-radius: 7px; font: inherit; }
 .checkout-consent { display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
 .checkout-consent input { width: auto; flex: 0 0 auto; margin-top: 5px; }
+
+/* ── AliExpress Style Storefront Upgrades ── */
+.top-promo-bar {
+  background: linear-gradient(90deg, #163f32 0%, #205946 55%, #ac5d39 100%);
+  color: #fff;
+  padding: 8px 6%;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  letter-spacing: 0.2px;
+}
+.promo-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.promo-badge {
+  background: #ff4747;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.promo-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.cart-nav-badge {
+  background: #ff4747;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+/* Category Pills Bar */
+.category-pills-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 8px 2px 20px;
+  margin-bottom: 24px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.category-pills-container::-webkit-scrollbar {
+  height: 4px;
+}
+.category-pills-container::-webkit-scrollbar-thumb {
+  background: #dce3dc;
+  border-radius: 4px;
+}
+.category-pill-btn {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: 1px solid #dce3dc;
+  background: #fff;
+  color: #3d5248;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.category-pill-btn:hover {
+  background: #eef3eb;
+  border-color: #163f32;
+  color: #163f32;
+}
+.category-pill-btn.active {
+  background: #163f32;
+  border-color: #163f32;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(22, 63, 50, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Authentic AliExpress Storefront UI (Ref: Images 2 & 3)
+───────────────────────────────────────────────────────────────────────────── */
+.ali-storefront-wrapper {
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+/* 1. AliExpress Pill Search Bar */
+.ali-search-container {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 16px;
+}
+.ali-search-bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 680px;
+  position: relative;
+  background: #ffffff;
+  border: 2px solid #163f32;
+  border-radius: 30px;
+  padding: 2px 4px 2px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+.ali-search-bar:focus-within {
+  border-color: #e62e04;
+  box-shadow: 0 2px 12px rgba(230, 46, 4, 0.15);
+}
+.ali-search-bar input[type="search"] {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 8px 10px 8px 0;
+  font-size: 14px;
+  color: #191919;
+}
+.ali-search-submit-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #163f32;
+  color: #ffffff;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  flex-shrink: 0;
+}
+.ali-search-submit-btn:hover {
+  background: #e62e04;
+  transform: scale(1.04);
+}
+.ali-clear-btn {
+  background: #f0f2ee;
+  color: #596b61;
+  border: none;
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 6px;
+  cursor: pointer;
+}
+.ali-clear-btn:hover {
+  background: #e2e6df;
+}
+
+/* 2. AliExpress Subnav Line (Image 2) */
+.ali-subnav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e7ebe4;
+}
+.ali-all-cat-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f4f6f2;
+  border: 1px solid #d8dfd5;
+  color: #163f32;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.ali-all-cat-btn:hover,
+.ali-all-cat-btn.active {
+  background: #163f32;
+  color: #ffffff;
+  border-color: #163f32;
+}
+.ali-hamburger-icon {
+  font-size: 15px;
+}
+.ali-nav-links-scroll {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0;
+}
+.ali-nav-links-scroll::-webkit-scrollbar {
+  display: none;
+}
+.ali-nav-link {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #3b4e44;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.ali-nav-link:hover {
+  color: #e62e04;
+}
+.ali-nav-link.active {
+  color: #e62e04;
+  border-bottom: 2px solid #e62e04;
+}
+.ali-nav-link.highlight-red {
+  color: #e62e04;
+  font-weight: 700;
+}
+
+/* 3. Featured Promo Section: "Today's deals" (Image 3) */
+.ali-deals-section {
+  margin-bottom: 30px;
+}
+.ali-section-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #191919;
+  letter-spacing: -0.5px;
+  margin: 0 0 16px;
+}
+.ali-deals-promo-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .ali-deals-promo-row {
+    grid-template-columns: 1fr;
+  }
+}
+.ali-deal-box {
+  background: #ffffff;
+  border: 1px solid #e4e8e1;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+.deal-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.deal-box-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #191919;
+}
+.deal-box-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 14px;
+  text-decoration: none;
+}
+.deal-box-badge.bundle {
+  background: #fff3e6;
+  color: #d96500;
+  border: 1px solid #ffd8b3;
+}
+.deal-box-badge.superdeal {
+  background: #feeceb;
+  color: #e62e04;
+  border: 1px solid #fcc7c4;
+}
+.deal-box-items-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.deal-box-item {
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.deal-item-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f4f6f3;
+}
+.deal-item-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s;
+}
+.deal-box-item:hover .deal-item-img-wrap img {
+  transform: scale(1.05);
+}
+.deal-discount-pill {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: #e62e04;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.deal-item-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2b3a32;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deal-item-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.deal-item-red-price {
+  font-size: 15px;
+  font-weight: 800;
+  color: #e62e04;
+}
+.deal-item-social {
+  font-size: 10px;
+  color: #798a80;
+}
+
+/* 4. Main AliExpress Product Stream (Image 2) */
+.ali-main-stream-section {
+  margin-bottom: 40px;
+}
+.ali-stream-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #191919;
+  margin: 0 0 16px;
+}
+.ali-product-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1200px) {
+  .ali-product-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .ali-product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  .ali-product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+/* AliExpress Feed Card (Image 2) */
+.ali-feed-card {
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e7ebe4;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+.ali-feed-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  border-color: #cfd8cc;
+}
+.ali-feed-thumb-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f3f5f1;
+  overflow: hidden;
+  display: block;
+}
+.ali-feed-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.ali-feed-card:hover .ali-feed-thumb {
+  transform: scale(1.05);
+}
+
+/* Red Banner at Bottom of Photo (Image 2) */
+.ali-thumb-ribbon {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #e60049;
+  color: #ffffff;
+  padding: 3px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+.ribbon-bold {
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.ribbon-dot {
+  opacity: 0.7;
+}
+.ribbon-sub {
+  font-weight: 600;
+  font-size: 10px;
+}
+
+/* White Round Floating Cart Button (Image 2) */
+.ali-thumb-cart-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #191919;
+  border: 1px solid #e2e8e0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 2;
+  padding: 0;
+}
+.ali-thumb-cart-btn:hover {
+  background: #163f32;
+  color: #ffffff;
+  border-color: #163f32;
+  transform: scale(1.1);
+}
+.ali-thumb-cart-btn.added {
+  background: #2e7d32;
+  color: #ffffff;
+  border-color: #2e7d32;
+}
+
+/* Card Content Area (Image 2) */
+.ali-feed-content {
+  padding: 8px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+/* Title with Choice & Sale badges */
+.ali-feed-title {
+  text-decoration: none;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #191919;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 1px 0 2px;
+}
+.ali-feed-title:hover {
+  color: #e62e04;
+  text-decoration: underline;
+}
+.ali-pill-choice {
+  background: #ffb800;
+  color: #1f1b00;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+.ali-pill-sale {
+  background: #e62e04;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+.ali-title-text {
+  vertical-align: middle;
+}
+
+/* Red Price & Strikethrough */
+.ali-feed-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 1px;
+}
+.ali-feed-red-price {
+  font-size: 16px;
+  font-weight: 800;
+  color: #e62e04;
+  line-height: 1.2;
+}
+.ali-feed-old-price {
+  font-size: 11px;
+  color: #939e97;
+  text-decoration: line-through;
+}
+
+/* Rating Row */
+.ali-feed-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: #718075;
+  white-space: nowrap;
+}
+.ali-stars-gold {
+  color: #ff9800;
+  font-size: 10.5px;
+  letter-spacing: -1px;
+}
+.ali-rating-number {
+  font-weight: 700;
+  color: #191919;
+}
+.ali-rating-pipe {
+  color: #cfd8cc;
+}
+.ali-sold-metric {
+  color: #718075;
+}
+
+/* Promo perk lines */
+.ali-feed-perks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+.ali-perk-line {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ali-perk-line.red {
+  color: #e62e04;
+  font-weight: 600;
+}
+.ali-toast-msg {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: #163f32;
+  color: white;
+  padding: 14px 24px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  font-size: 14px;
+  font-weight: 600;
+  animation: slideUpToast 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+@keyframes slideUpToast {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Mobile Viewport Optimizations (AliExpress 2-Column Experience) ── */
+@media (max-width: 650px) {
+  /* Compact mobile header */
+  header {
+    padding: 12px 14px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    font-size: 21px;
+    letter-spacing: -0.5px;
+  }
+  nav {
+    gap: 12px;
+    font-size: 13.5px;
+  }
+  .top-promo-bar {
+    padding: 6px 12px;
+    font-size: 11.5px;
+  }
+  .promo-right {
+    display: none; /* Keep clean 1-line promo on small screens */
+  }
+
+  /* Compact Main Container */
+  main {
+    padding: 16px 12px 40px;
+  }
+
+  /* Hero & Title section */
+  .storefront-hero {
+    margin-bottom: 16px;
+  }
+  .storefront-hero h1 {
+    font-size: 22px;
+    margin: 4px 0 8px;
+    letter-spacing: -0.5px;
+  }
+  .storefront-hero .eyebrow {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+  }
+  .storefront-hero .intro {
+    font-size: 13px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .storefront-hero-title {
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .storefront-deals-tag {
+    font-size: 11px;
+    padding: 3px 9px;
+  }
+
+  /* Category Scroll Pills */
+  .category-pills-container {
+    gap: 8px;
+    padding: 4px 2px 14px;
+    margin-bottom: 14px;
+  }
+  .category-pill-btn {
+    padding: 6px 14px;
+    font-size: 12.5px;
+    border-radius: 18px;
+  }
+
+  /* Responsive Search Bar */
+  .catalogue-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    width: 100%;
+  }
+  .catalogue-filters input[type="search"] {
+    padding: 10px 16px;
+    font-size: 13.5px;
+    border-radius: 20px;
+  }
+  .catalogue-filters button[type="submit"] {
+    padding: 10px 18px;
+    font-size: 13.5px;
+    border-radius: 20px;
+  }
+  .catalogue-filters button.secondary {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 20px;
+  }
+
+  /* AliExpress 2-Column Product Grid on Mobile */
+  .ali-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .ali-card {
+    border-radius: 10px;
+  }
+  .ali-card:hover {
+    transform: none; /* Disable 3D lift on mobile touch */
+  }
+  .ali-card-thumb-wrap {
+    aspect-ratio: 1 / 1;
+  }
+  .ali-floating-cart-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    bottom: 8px;
+    right: 8px;
+  }
+  .ali-card-content {
+    padding: 6px 8px 8px;
+    gap: 3px;
+  }
+  .ali-price-row {
+    gap: 4px;
+  }
+  .ali-current-price {
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .ali-original-price {
+    font-size: 10.5px;
+  }
+  .ali-discount-badge {
+    font-size: 9.5px;
+    padding: 1px 3px;
+    border-radius: 3px;
+  }
+  .ali-title-link {
+    font-size: 12px;
+    line-height: 1.3;
+    margin: 1px 0 2px;
+  }
+  .ali-social-row {
+    font-size: 10px;
+    padding-top: 3px;
+    white-space: nowrap;
+    gap: 3px;
+  }
+  .ali-toast-msg {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    padding: 12px 16px;
+    font-size: 13px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Mobile pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+  }
+  .pagination button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  .pagination span {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 380px) {
+  .ali-grid {
+    gap: 8px;
+  }
+  .ali-card-content {
+    padding: 8px 6px 10px;
+  }
+  .ali-current-price {
+    font-size: 14px;
+  }
+  .ali-title-link {
+    font-size: 12px;
+    height: 32px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   AliExpress-Style Product Detail Page
+───────────────────────────────────────────────────────────────────────────── */
+.product-page-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+/* Breadcrumbs */
+.detail-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #718075;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.breadcrumb-link {
+  color: #163f32;
+  text-decoration: none;
+  font-weight: 500;
+}
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+.breadcrumb-sep {
+  color: #c2ccc5;
+}
+.breadcrumb-cat {
+  color: #556b60;
+}
+.breadcrumb-current {
+  color: #203a35;
+  font-weight: 600;
+}
+
+/* 2-Column Product Showcase Layout */
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 460px) 1fr;
+  gap: 36px;
+  align-items: start;
+}
+
+/* Left: Gallery & Trust */
+.detail-gallery-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.detail-image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f4f6f3;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #dce3dc;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+.detail-main-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.detail-main-img:hover {
+  transform: scale(1.04);
+}
+.detail-choice-tag {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: #ffb800;
+  color: #1f1b00;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.detail-discount-tag {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: #ff4747;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.detail-trust-badges {
+  background: #ffffff;
+  border: 1px solid #e2e8e0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: #4b5e54;
+}
+.trust-item span {
+  font-size: 16px;
+}
+
+/* Right: Information & Buy Box */
+.detail-info-col {
+  background: #ffffff;
+  border: 1px solid #e2e8e0;
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.detail-title-block h1 {
+  font-size: 26px;
+  letter-spacing: -0.5px;
+  margin: 6px 0 0;
+  color: #163f32;
+  line-height: 1.25;
+}
+.detail-brand-badge {
+  display: inline-block;
+  background: #edf2ea;
+  color: #204c3c;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.detail-social-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #62756e;
+  flex-wrap: wrap;
+}
+.detail-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff9800;
+  font-weight: 700;
+}
+.rating-count {
+  color: #83948b;
+  font-weight: 400;
+}
+.social-sep {
+  color: #d0dad2;
+}
+.detail-sold-stat {
+  color: #4a5d53;
+  font-weight: 500;
+}
+.detail-popular-tag {
+  color: #e65100;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* AliExpress Price Banner */
+.detail-price-banner {
+  background: linear-gradient(135deg, #fbf7ee 0%, #f7f1e4 100%);
+  border: 1px solid #fae8cc;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.price-primary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.detail-current-price {
+  font-size: 28px;
+  font-weight: 800;
+  color: #163f32;
+  letter-spacing: -0.5px;
+}
+.detail-original-price {
+  font-size: 15px;
+  color: #94a399;
+  text-decoration: line-through;
+}
+.detail-deal-badge {
+  background: #ff4747;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.detail-deal-urgency {
+  font-size: 12px;
+  color: #ac5d39;
+  font-weight: 600;
+}
+
+/* Category pills */
+.detail-categories-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.meta-label {
+  font-size: 12.5px;
+  color: #718075;
+  font-weight: 600;
+}
+.category-pill-tag {
+  background: #f0f4ee;
+  color: #2d5040;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+/* Description */
+.detail-description-wrap {
+  border-top: 1px solid #edf1eb;
+  padding-top: 14px;
+}
+.detail-description-text {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #43574c;
+  margin: 0;
+}
+
+/* Variant Selector Box */
+.detail-variant-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid #edf1eb;
+  padding-top: 16px;
+}
+.variant-pills-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.variant-option-pill {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid #dce3dc;
+  background: #ffffff;
+  color: #243830;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.variant-option-pill:hover {
+  border-color: #163f32;
+  background: #f6f8f5;
+}
+.variant-option-pill.active {
+  border-color: #163f32;
+  background: #163f32;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(22, 63, 50, 0.25);
+}
+
+/* Specs & Attributes */
+.detail-specs-box {
+  background: #f9faf8;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+.specs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.specs-sku {
+  font-family: monospace;
+  font-weight: 600;
+  color: #3b4e44;
+}
+.specs-attributes-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.attribute-chip {
+  background: #ffffff;
+  border: 1px solid #dce3dc;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.attr-name {
+  color: #718075;
+}
+.attr-val {
+  font-weight: 700;
+  color: #163f32;
+}
+
+.detail-stock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stock-status {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.stock-status.in-stock {
+  color: #2e7d32;
+}
+.stock-status.backorder {
+  color: #ac5d39;
+}
+
+/* Buy Box Actions */
+.detail-buy-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid #edf1eb;
+  padding-top: 18px;
+  flex-wrap: wrap;
+}
+.qty-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qty-controls {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #dce3dc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+.qty-btn {
+  background: #f4f6f3;
+  color: #204c3c;
+  border: none;
+  width: 36px;
+  height: 38px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+  padding: 0;
+  transition: background 0.15s;
+}
+.qty-btn:hover:not(:disabled) {
+  background: #e2e8e0;
+}
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.qty-input-field {
+  width: 48px;
+  height: 38px;
+  border: none;
+  text-align: center;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #163f32;
+  padding: 0;
+  border-radius: 0;
+}
+.detail-add-cart-btn {
+  flex: 1;
+  min-width: 200px;
+  background: #163f32;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(22, 63, 50, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.detail-add-cart-btn:hover {
+  background: #205946;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(22, 63, 50, 0.3);
+}
+
+.detail-cart-alert {
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: slideUpToast 0.25s ease;
+}
+.detail-cart-alert.success {
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #c8e6c9;
+}
+.detail-cart-alert.warn {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
+}
+
+/* Mobile responsive layout for Product Details */
+@media (max-width: 768px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .detail-info-col {
+    padding: 18px 16px;
+    border-radius: 12px;
+  }
+  .detail-title-block h1 {
+    font-size: 21px;
+  }
+  .detail-current-price {
+    font-size: 24px;
+  }
+  .detail-buy-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .qty-picker-wrap {
+    justify-content: space-between;
+  }
+  .detail-add-cart-btn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+}
+
+
+
