@@ -1,11 +1,12 @@
+import { BUSINESS_TIME_ZONE, businessDate, businessDaySql } from '../../../shared/time.js';
 import { ApiError } from '../errors.js';
 import { inTransaction } from '../utils/transaction.js';
 
-const scope = { timezone: 'UTC', scope: 'project-orders-usd' };
+const scope = { timezone: BUSINESS_TIME_ZONE, scope: 'project-orders-usd' };
 const project = "JOIN checkout_requests cr ON cr.order_id=o.id WHERE o.currency='USD'";
 export const REPORT_QUERIES = {
-  quarterly: `SELECT QUARTER(o.created_at) AS quarter, COUNT(*) AS orderCount, SUM(o.total) AS salesAmount
-    FROM orders o ${project} AND o.status<>'cancelled' AND o.created_at>=? AND o.created_at<? GROUP BY QUARTER(o.created_at)`,
+  quarterly: `SELECT CASE WHEN o.created_at<? THEN 1 WHEN o.created_at<? THEN 2 WHEN o.created_at<? THEN 3 ELSE 4 END AS quarter, COUNT(*) AS orderCount, SUM(o.total) AS salesAmount
+    FROM orders o ${project} AND o.status<>'cancelled' AND o.created_at>=? AND o.created_at<? GROUP BY quarter`,
   top: `SELECT p.id AS productId,p.name,SUM(i.quantity) AS quantity,SUM(i.quantity*i.unit_price) AS salesAmount
     FROM orders o JOIN order_items i ON i.order_id=o.id JOIN variants v ON v.id=i.variant_id JOIN products p ON p.id=v.product_id
     ${project} AND o.status<>'cancelled' AND o.created_at>=? AND o.created_at<?
@@ -17,7 +18,7 @@ export const REPORT_QUERIES = {
     ) eligible ON eligible.category_id=c.id GROUP BY c.id,c.name ORDER BY c.id`,
   upcoming: `SELECT o.id AS orderId,o.fulfillment,o.status,
     DATE_FORMAT(d.estimated_date,'%Y-%m-%d') AS estimatedDate,DATE_FORMAT(d.actual_date,'%Y-%m-%d') AS actualDate,
-    o.was_out_of_stock AS wasOutOfStock,(d.estimated_date<UTC_DATE()) AS isOverdue
+    o.was_out_of_stock AS wasOutOfStock,(d.estimated_date<?) AS isOverdue
     FROM deliveries d JOIN orders o ON o.id=d.order_id ${project}
     AND o.status IN ('backordered','confirmed','processing','shipped','ready_for_pickup')
     AND d.estimated_date>=? AND d.estimated_date<? ORDER BY d.estimated_date,o.id`,
@@ -43,8 +44,9 @@ export async function readReport(pool, name, input) {
   return inTransaction(pool, async (connection) => {
     if (name === 'quarterly-sales') {
       const [rows] = await connection.execute(REPORT_QUERIES.quarterly, [
-        `${input.year}-01-01`,
-        `${input.year + 1}-01-01`,
+        ...['04-01', '07-01', '10-01'].map((day) => businessDaySql(`${input.year}-${day}`)),
+        businessDaySql(`${input.year}-01-01`),
+        businessDaySql(`${input.year + 1}-01-01`),
       ]);
       const quarters = Array.from({ length: 4 }, (_, index) => ({
         quarter: index + 1,
@@ -60,7 +62,10 @@ export async function readReport(pool, name, input) {
       return { ...scope, year: input.year, currency: 'USD', quarters };
     }
     const period = { ...scope, from: input.from, to: input.to };
-    const params = [input.from, input.end];
+    const params =
+      name === 'upcoming-deliveries'
+        ? [businessDate(), input.from, input.end]
+        : [businessDaySql(input.from), businessDaySql(input.end)];
     if (name === 'top-products') {
       const [rows] = await connection.execute(REPORT_QUERIES.top, [...params, input.limit]);
       return {

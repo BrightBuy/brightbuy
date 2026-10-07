@@ -11,7 +11,7 @@ export const ORDER_TRANSITIONS = Object.freeze({
   delivered: Object.freeze([]),
   collected: Object.freeze([]),
   cancelled: Object.freeze([]),
-  backordered: Object.freeze(['confirmed','cancelled']),
+  backordered: Object.freeze(['confirmed', 'cancelled']),
 });
 
 export function nextStatuses(status, fulfillment) {
@@ -27,3 +27,11 @@ export function nextStatuses(status, fulfillment) {
     return true;
   });
 }
+
+export {
+  BUSINESS_TIME_ZONE,
+  businessDate,
+  addCalendarDays,
+  startOfBusinessDayUtc,
+  businessDaySql,
+} from './time.js';

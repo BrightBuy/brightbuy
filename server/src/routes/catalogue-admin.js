@@ -167,6 +167,13 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
   // Attributes
   // ---------------------------------------------------------------------------
 
+  // GET /admin/attributes
+  router.get('/admin/attributes', requireAuthentication, requireAdmin, async (req, res) => {
+    const [attributes] = await db.execute('SELECT id, name FROM attributes ORDER BY id ASC');
+    res.json({ data: attributes });
+  });
+
+
   // POST /admin/attributes
   router.post('/admin/attributes', requireAuthentication, requireAdmin, async (req, res) => {
     validateAllowedKeys(req.body, ['name']);

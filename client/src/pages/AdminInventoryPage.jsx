@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { api } from '../api.js';
+import { formatCentralTime } from '../utils/date-time.js';
 
 export function AdminInventoryPage() {
     const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -189,7 +190,7 @@ export function AdminInventoryPage() {
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Date (UTC)</th>
+                                        <th>Date (Central Time)</th>
                                         <th>Change</th>
                                         <th>Stock After</th>
                                         <th>Type</th>
@@ -201,7 +202,7 @@ export function AdminInventoryPage() {
                                     {historyMovements.map((move) => (
                                         <tr key={move.id}>
                                             <td>#{move.id}</td>
-                                            <td>{new Date(move.createdAt).toLocaleString()}</td>
+                                            <td>{formatCentralTime(move.createdAt)}</td>
                                             <td style={{ fontWeight: 'bold', color: move.changeQty > 0 ? '#10b981' : '#ef4444' }}>
                                                 {move.changeQty > 0 ? `+${move.changeQty}` : move.changeQty}
                                             </td>

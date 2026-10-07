@@ -1,3 +1,4 @@
+import { businessDate, addCalendarDays } from '../../shared/time.js';
 import { describe, test, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -124,15 +125,29 @@ describe('M3 real MySQL 8.4 integration (isolated generated database)', { skip: 
     const [[cart]]=await pool.query('SELECT version FROM carts WHERE id=1');assert.equal(cart.version,3);
     assert.deepEqual(await balances(),[5,5]);
   });
-  test('all four estimates use stored UTC date',async()=>{
+  test('all four estimates use the stored Central order date',async()=>{
     for(const main of [true,false])for(const shortage of [false,true]){
       await pool.query('DELETE FROM cart_items');await pool.query('UPDATE carts SET version=3 WHERE id=1');
       await pool.query('UPDATE variants SET stock=? WHERE id=1',[shortage?0:5]);
       await pool.query('INSERT INTO cart_items VALUES(1,1,1)');
       const order=(await checkout(pool,actor,body({addressId:main?1:3}))).data;
-      const date=new Date(`${order.createdAt.slice(0,10)}T00:00:00Z`);
-      date.setUTCDate(date.getUTCDate()+(main?5:7)+(shortage?3:0));
-      assert.equal(order.delivery.estimatedDate,date.toISOString().slice(0,10));
+      assert.equal(order.delivery.estimatedDate,addCalendarDays(businessDate(order.createdAt),(main?5:7)+(shortage?3:0)));
+    }
+  });
+  test('checkout near UTC midnight estimates from the previous Central day',async()=>{
+    const fixed = await pool.getConnection();
+    try {
+      await fixed.query('SET timestamp = ?', [Date.parse('2026-01-01T02:00:00Z') / 1000]);
+      const pinned = new Proxy(fixed, { get(target, key) {
+        if (key === 'release') return () => {};
+        const value = target[key]; return typeof value === 'function' ? value.bind(target) : value;
+      }});
+      const result = await checkout({async getConnection(){return pinned;}}, actor, body());
+      assert.equal(result.data.createdAt, '2026-01-01T02:00:00.000Z');
+      assert.equal(result.data.delivery.estimatedDate, '2026-01-05');
+    } finally {
+      await fixed.query('SET timestamp = 0');
+      fixed.release();
     }
   });
   test('pickup card and address deletion preserve valid snapshots',async()=>{

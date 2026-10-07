@@ -5,19 +5,9 @@ import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { formatMoney, statusLabel } from '../utils/format.js';
 import { calendarDate, trackingStatus, isOverdue } from '../utils/order-tracking.js';
+import { formatCentralTime } from '../utils/date-time.js';
 import { CancelOrderForm } from '../components/CancelOrderForm.jsx';
 import './OrderDetailPage.css';
-
-function utcTime(value) {
-  if (!value || !Number.isFinite(new Date(value).getTime())) return 'Unavailable';
-  return (
-    new Intl.DateTimeFormat('en-GB', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: 'UTC',
-    }).format(new Date(value)) + ' UTC'
-  );
-}
 
 export function OrderDetailPage() {
   const { id } = useParams();
@@ -37,7 +27,7 @@ export function OrderDetailPage() {
                 <span className="badge">{trackingStatus(order.status)}</span> ·{' '}
                 {pickup ? 'Store pickup' : 'Delivery'}
               </p>
-              <p>Placed {utcTime(order.createdAt)}</p>
+              <p>Placed {formatCentralTime(order.createdAt)}</p>
               {order.isLegacy && (
                 <p className="order-notice">
                   Legacy sample; delivery/payment tracking unavailable. Historical order details are
@@ -136,9 +126,11 @@ export function OrderDetailPage() {
                         Original amount: {formatMoney(order.payment.amount, order.payment.currency)}
                       </p>
                       {order.payment.reference && <p>Reference: {order.payment.reference}</p>}
-                      {order.payment.paidAt && <p>Paid: {utcTime(order.payment.paidAt)}</p>}
+                      {order.payment.paidAt && (
+                        <p>Paid: {formatCentralTime(order.payment.paidAt)}</p>
+                      )}
                       {order.payment.refundedAt && (
-                        <p>Refunded: {utcTime(order.payment.refundedAt)}</p>
+                        <p>Refunded: {formatCentralTime(order.payment.refundedAt)}</p>
                       )}
                       {order.payment.status === 'void' && (
                         <p>No payment is due for this cancelled order.</p>
@@ -169,24 +161,23 @@ export function OrderDetailPage() {
                           {event.fromStatus ? `${trackingStatus(event.fromStatus)} → ` : ''}
                           {trackingStatus(event.toStatus)}
                         </strong>
-                        <time dateTime={event.createdAt}>{utcTime(event.createdAt)}</time>
+                        <time dateTime={event.createdAt}>{formatCentralTime(event.createdAt)}</time>
                       </li>
                     ))}
                   </ol>
                 </section>
               )}
-              {!order.isLegacy &&
-                ['backordered', 'confirmed'].includes(order.status) && (
-                  <section className="order-cancel" aria-label="Cancel order">
-                    <h2>Cancel order</h2>
-                    <CancelOrderForm
-                      key={order.id}
-                      orderId={order.id}
-                      admin={user.role === 'admin'}
-                      onSuccess={state.reload}
-                    />
-                  </section>
-                )}
+              {!order.isLegacy && ['backordered', 'confirmed'].includes(order.status) && (
+                <section className="order-cancel" aria-label="Cancel order">
+                  <h2>Cancel order</h2>
+                  <CancelOrderForm
+                    key={order.id}
+                    orderId={order.id}
+                    admin={user.role === 'admin'}
+                    onSuccess={state.reload}
+                  />
+                </section>
+              )}
               {user.role === 'admin' && !order.isLegacy && (
                 <p>
                   Use the fulfilment workflow for stock allocation and delivery/pickup completion.

@@ -1,3 +1,4 @@
+import { businessDate } from '../../../shared/time.js';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
@@ -139,7 +140,7 @@ function ReportResult({ name, data }) {
   );
 }
 export function AdminReportsPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = businessDate();
   const [name, setName] = useState('quarterly-sales');
   const [year, setYear] = useState(today.slice(0, 4));
   const [from, setFrom] = useState(`${today.slice(0, 4)}-01-01`);
@@ -168,8 +169,8 @@ export function AdminReportsPage() {
       <p className="eyebrow">STORE ADMINISTRATION</p>
       <h1>Project reports</h1>
       <p className="intro">
-        UTC periods · USD project orders only. Legacy sample orders and failed checkout attempts are
-        excluded.
+        Central Time periods · USD project orders only. Legacy sample orders and failed checkout
+        attempts are excluded.
       </p>
       <form className="card report-filters" onSubmit={run}>
         <label>
@@ -198,7 +199,7 @@ export function AdminReportsPage() {
         ) : (
           <>
             <label>
-              From (UTC)
+              From (Central Time)
               <input
                 type="date"
                 required
@@ -207,7 +208,7 @@ export function AdminReportsPage() {
               />
             </label>
             <label>
-              To (UTC, inclusive)
+              To (Central Time, inclusive)
               <input
                 type="date"
                 required

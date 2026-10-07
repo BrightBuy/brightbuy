@@ -19,7 +19,7 @@ x-db-env: &db-env
 services:
   db:
     image: mysql:8.4
-    command: --log_bin_trust_function_creators=1
+    command: ['--log_bin_trust_function_creators=1', '--default-time-zone=+00:00']
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE in .env}
       MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env}
