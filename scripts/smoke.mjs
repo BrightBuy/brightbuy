@@ -118,6 +118,85 @@ assert.equal(rejected.status, 409);
 assert.equal(rejected.body.error.code, 'LEGACY_ORDER_REQUIRES_MIGRATION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
 
+// ── M1 catalogue smoke checks ─────────────────────────────────────────────
+// GET /catalogue — paginated active catalogue
+const cataloguePage = await call('/catalogue?page=1&pageSize=12');
+assert.equal(cataloguePage.status, 200);
+assert.ok(Array.isArray(cataloguePage.body.data.items), 'GET /catalogue must return items array');
+assert.ok(typeof cataloguePage.body.data.total === 'number', 'GET /catalogue must return total');
+assert.ok(cataloguePage.body.data.items.length > 0, 'Paginated catalogue must have items');
+assert.ok(
+  cataloguePage.body.data.items.every((p) => p.isActive !== false),
+  'Public catalogue must only include active products',
+);
+assert.ok(
+  cataloguePage.body.data.items.every((p) => p.defaultVariant !== undefined),
+  'Each catalogue item must expose defaultVariant',
+);
+
+// GET /catalogue?q= — search by name/brand substring
+const searchResult = await call('/catalogue?q=Nova&page=1&pageSize=12');
+assert.equal(searchResult.status, 200);
+assert.ok(
+  searchResult.body.data.items.every(
+    (p) => p.name.toLowerCase().includes('nova') || p.brand?.toLowerCase().includes('nova'),
+  ),
+  'Search results must match query in name or brand',
+);
+
+// GET /categories — public category list
+const categories = await call('/categories');
+assert.equal(categories.status, 200);
+assert.ok(Array.isArray(categories.body.data), 'GET /categories must return array');
+assert.ok(categories.body.data.length >= 10, 'Expected at least 10 seeded categories');
+
+// GET /catalogue?categoryId= — filter by category
+const firstCat = categories.body.data[0];
+const filtered = await call(`/catalogue?categoryId=${firstCat.id}&page=1&pageSize=12`);
+assert.equal(filtered.status, 200);
+assert.ok(
+  filtered.body.data.items.every((p) => p.categories?.some((c) => c.id === firstCat.id)),
+  'Category filter must only return products in that category',
+);
+
+// GET /catalogue — invalid params return 400
+assert.equal((await call('/catalogue?page=0')).status, 400);
+assert.equal((await call('/catalogue?pageSize=999')).status, 400);
+
+// GET /products/:id — product detail
+const firstProduct = cataloguePage.body.data.items[0];
+const productDetail = await call(`/products/${firstProduct.id}`);
+assert.equal(productDetail.status, 200);
+assert.equal(productDetail.body.data.id, firstProduct.id, 'Detail must return the requested product');
+assert.ok(Array.isArray(productDetail.body.data.variants), 'Product detail must include variants');
+assert.ok(Array.isArray(productDetail.body.data.categories), 'Product detail must include categories');
+assert.ok(productDetail.body.data.variants.length > 0, 'Active product must have at least one variant');
+assert.ok(
+  productDetail.body.data.variants.some((v) => v.isDefault),
+  'Product detail must include a default variant',
+);
+
+// GET /products/:id — 404 for unknown ID
+assert.equal((await call('/products/999999')).status, 404);
+
+// Admin catalogue reads — require authentication
+assert.equal((await call('/admin/products')).status, 401);
+assert.equal((await call('/admin/categories')).status, 401);
+assert.equal((await call('/admin/attributes')).status, 401);
+assert.equal((await call('/admin/products', { headers: customer })).status, 403);
+
+// Admin reads succeed with admin token
+const adminProducts = await call('/admin/products', { headers: admin });
+assert.equal(adminProducts.status, 200);
+assert.ok(Array.isArray(adminProducts.body.data), 'Admin products must be an array');
+assert.ok(adminProducts.body.data.length >= 40, 'Admin list must include 40+ project products');
+const adminCategories = await call('/admin/categories', { headers: admin });
+assert.equal(adminCategories.status, 200);
+assert.ok(adminCategories.body.data.length >= 10, 'Admin categories must have at least 10 entries');
+const adminAttributes = await call('/admin/attributes', { headers: admin });
+assert.equal(adminAttributes.status, 200);
+assert.ok(adminAttributes.body.data.length >= 8, 'Admin attributes must have at least 8 entries');
+
 console.log(
   'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
 );
