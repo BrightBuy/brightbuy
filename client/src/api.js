@@ -12,12 +12,15 @@ export function createApiClient({
   onUnauthorized = () => {},
 } = {}) {
   let token = null;
+  let sessionVersion = 0;
   function setToken(value) {
     token = value;
+    sessionVersion += 1;
   }
 
   async function api(path, options = {}) {
     const requestToken = token;
+    const requestVersion = sessionVersion;
     const headers = new Headers(options.headers);
     if (options.body && !headers.has('Content-Type'))
       headers.set('Content-Type', 'application/json');
@@ -38,9 +41,11 @@ export function createApiClient({
       response.status === 401 &&
       path !== '/auth/login' &&
       requestToken &&
-      token === requestToken
+      token === requestToken &&
+      sessionVersion === requestVersion
     ) {
       token = null;
+      sessionVersion += 1;
       onUnauthorized();
     }
 
@@ -67,6 +72,11 @@ export function createApiClient({
       throw new ApiRequestError('The server returned an unexpected response. Please try again.', {
         status: response.status,
         code: 'INVALID_RESPONSE',
+      });
+    }
+    if (requestToken && path !== '/auth/login' && requestVersion !== sessionVersion) {
+      throw new ApiRequestError('Your session changed. Reload this page before continuing.', {
+        status: 401, code: 'UNAUTHENTICATED',
       });
     }
     return payload.data;

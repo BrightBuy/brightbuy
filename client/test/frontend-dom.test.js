@@ -166,3 +166,96 @@ test('catalogue category-loading failures appear in the product form', async () 
   await click('New product');
   assert.match(document.body.textContent, /Cannot reach the server/);
 });
+
+
+test('late profile updates cannot restore a signed-out user or overwrite another account', async () => {
+  let auth;
+  function Probe() { auth = useAuth(); return null; }
+  globalThis.fetch = async () => Response.json({ data: { accessToken: 'test', user: { id: 1, name: 'Test' } } });
+  root = createRoot(document.getElementById('root'));
+  await React.act(async () => root.render(h(AuthProvider, null, h(Probe))));
+  await React.act(async () => auth.login('test@example.com', 'password'));
+  await React.act(async () => auth.updateUser({ id: 2, name: 'Other account' }));
+  assert.equal(auth.user.name, 'Test');
+  await React.act(async () => auth.logout());
+  await React.act(async () => auth.updateUser({ id: 1, name: 'Late profile' }));
+  assert.equal(auth.user, null);
+});
+
+test('late login responses cannot undo logout or replace a newer login', async () => {
+  let auth;
+  function Probe() { auth = useAuth(); return null; }
+  root = createRoot(document.getElementById('root'));
+  await React.act(async () => root.render(h(AuthProvider, null, h(Probe))));
+  const responses = [];
+  globalThis.fetch = () => new Promise(resolve => responses.push(resolve));
+  const result = (id) => Response.json({ data: { accessToken: 'token-' + id, user: { id } } });
+  let oldLogin;
+  await React.act(async () => { oldLogin = auth.login('old@test', 'password'); });
+  const rejectedOld = assert.rejects(oldLogin, /no longer current/);
+  await React.act(async () => auth.logout());
+  await React.act(async () => { responses.shift()(result(1)); await rejectedOld; });
+  assert.equal(auth.user, null);
+  let first;
+  let second;
+  await React.act(async () => {
+    first = auth.login('first@test', 'password');
+    second = auth.login('second@test', 'password');
+  });
+  const rejectedFirst = assert.rejects(first, /no longer current/);
+  await React.act(async () => { responses[1](result(2)); await second; });
+  await React.act(async () => { responses[0](result(1)); await rejectedFirst; });
+  assert.equal(auth.user.id, 2);
+});
+
+
+test('valid profile edits preserve authentication and logout removes the bearer token', async () => {
+  const { api } = await import('../src/api.js');
+  let auth;
+  let authorization;
+  function Probe() { auth = useAuth(); return null; }
+  globalThis.fetch = async (path, options) => {
+    if (path === '/api/auth/login') return Response.json({ data: {
+      accessToken: 'profile-token', user: { id: 4, name: 'Before', role: 'customer', email: 'user@test' },
+    } });
+    authorization = options.headers.get('Authorization');
+    return Response.json({ data: [] });
+  };
+  root = createRoot(document.getElementById('root'));
+  await React.act(async () => root.render(h(AuthProvider, null, h(Probe))));
+  await React.act(async () => auth.login('user@test', 'password'));
+  await React.act(async () => auth.updateUser({ id: 4, name: 'After' }));
+  assert.deepEqual(auth.user, { id: 4, name: 'After', role: 'customer', email: 'user@test' });
+  await api('/orders');
+  assert.equal(authorization, 'Bearer profile-token');
+  await React.act(async () => auth.logout());
+  await api('/products');
+  assert.equal(authorization, null);
+  assert.equal(auth.user, null);
+});
+
+test('a failed replacement login preserves the current account and bearer token', async () => {
+  const { api } = await import('../src/api.js');
+  let auth;
+  let rejectLogin = false;
+  let authorization;
+  function Probe() { auth = useAuth(); return null; }
+  globalThis.fetch = async (path, options) => {
+    if (path === '/api/auth/login') {
+      if (rejectLogin) return Response.json({ error: { code: 'UNAUTHENTICATED', message: 'Wrong password' } }, { status: 401 });
+      return Response.json({ data: { accessToken: 'current-token', user: { id: 5, name: 'Current' } } });
+    }
+    authorization = options.headers.get('Authorization');
+    return Response.json({ data: [] });
+  };
+  root = createRoot(document.getElementById('root'));
+  await React.act(async () => root.render(h(AuthProvider, null, h(Probe))));
+  await React.act(async () => auth.login('current@test', 'password'));
+  rejectLogin = true;
+  await React.act(async () => {
+    await assert.rejects(auth.login('other@test', 'wrong'), { status: 401 });
+  });
+  assert.equal(auth.user.id, 5);
+  await api('/orders');
+  assert.equal(authorization, 'Bearer current-token');
+});
