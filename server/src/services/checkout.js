@@ -1,3 +1,4 @@
+import { businessDate, addCalendarDays } from '../../../shared/time.js';
 import { ApiError } from '../errors.js';
 import { validateCheckout, checkoutFingerprint, MAX_VERSION } from '../utils/checkout-input.js';
 import { sumLines } from '../utils/money.js';
@@ -93,12 +94,15 @@ export function makeCheckout({ readCart, getDestination, deliveryDays, applyStoc
       }
       const days = await deliveryDays(connection, destination.isMainCity, shortage);
       assertDeliveryDays(days, destination.isMainCity, shortage);
+      const [[placed]] = await connection.execute(
+        "SELECT DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS placedAt FROM orders WHERE id=?",
+        [orderId]);
+      const estimatedDate = addCalendarDays(businessDate(placed.placedAt), days);
       await connection.execute(
         `INSERT INTO deliveries
          (order_id,mode,address_id,store_id,destination_snapshot,estimated_date,actual_date)
-         SELECT id,?,?,?,?,DATE_ADD(DATE(created_at),INTERVAL ? DAY),NULL
-         FROM orders WHERE id=?`,
-        [input.fulfillment, destination.addressId, destination.storeId, snapshot, days, orderId]);
+         VALUES (?,?,?,?,?,?,NULL)`,
+        [orderId, input.fulfillment, destination.addressId, destination.storeId, snapshot, estimatedDate]);
       await createPayment(connection, orderId, input, total);
       await connection.execute(
         `INSERT INTO order_status_history (order_id,from_status,to_status,actor_id)

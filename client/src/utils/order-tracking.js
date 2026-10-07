@@ -1,3 +1,5 @@
+import { businessDate } from '../../../shared/time.js';
+
 export function trackingStatus(status) {
   return status === 'shipped' ? 'Dispatched' : status.replaceAll('_', ' ');
 }
@@ -16,7 +18,7 @@ export function calendarDate(value) {
   }).format(date);
 }
 
-export function isOverdue(order, today = new Date().toISOString().slice(0, 10)) {
+export function isOverdue(order, today = businessDate()) {
   return (
     !order.isLegacy &&
     !['cancelled', 'delivered', 'collected'].includes(order.status) &&

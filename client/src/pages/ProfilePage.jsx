@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { api } from '../api.js';
+import { formatCentralDate } from '../utils/date-time.js';
 
 export function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -59,7 +60,7 @@ export function ProfilePage() {
         <p><strong>Email:</strong> {user.email}</p>
         <p><strong>Account Role:</strong> <span className="badge">{user.role}</span></p>
         {user.registeredAt && (
-          <p><strong>Member Since:</strong> {new Date(user.registeredAt).toLocaleDateString()}</p>
+          <p><strong>Member Since (Central Time):</strong> {formatCentralDate(user.registeredAt)}</p>
         )}
       </div>
 
