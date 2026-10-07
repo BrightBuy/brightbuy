@@ -30,6 +30,14 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
   // Categories
   // ---------------------------------------------------------------------------
 
+  // GET /admin/categories
+  router.get('/admin/categories', requireAuthentication, requireAdmin, async (req, res) => {
+    const [categories] = await db.query(
+      'SELECT id, name, description FROM categories ORDER BY name ASC',
+    );
+    res.json({ data: categories || [] });
+  });
+
   // POST /admin/categories
   router.post('/admin/categories', requireAuthentication, requireAdmin, async (req, res) => {
     validateAllowedKeys(req.body, ['name', 'description']);
@@ -169,8 +177,8 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
 
   // GET /admin/attributes
   router.get('/admin/attributes', requireAuthentication, requireAdmin, async (req, res) => {
-    const [attributes] = await db.execute('SELECT id, name FROM attributes ORDER BY id ASC');
-    res.json({ data: attributes });
+    const [attributes] = await db.query('SELECT id, name FROM attributes ORDER BY id ASC');
+    res.json({ data: attributes || [] });
   });
 
 
