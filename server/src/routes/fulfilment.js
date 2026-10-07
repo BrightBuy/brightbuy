@@ -1,3 +1,4 @@
+import { businessDate } from '../../../shared/time.js';
 import { Router } from 'express';
 import { ApiError, positiveId } from '../errors.js';
 import { requireAdmin } from '../middleware/auth.js';
@@ -27,6 +28,7 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
         const conn = await db.getConnection();
 
         try {
+            await conn.query("SET time_zone = '+00:00'");
             await conn.beginTransaction();
 
             const [orders] = await conn.execute(
@@ -208,6 +210,7 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
         const conn = await db.getConnection();
 
         try {
+            await conn.query("SET time_zone = '+00:00'");
             await conn.beginTransaction();
 
             // get and lock the order
@@ -329,6 +332,7 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
         const conn = await db.getConnection();
 
         try {
+            await conn.query("SET time_zone = '+00:00'");
             await conn.beginTransaction();
 
             // get and lock the order
@@ -460,12 +464,15 @@ export function createFulfilmentRoutes(db, requireAuthentication) {
                 [targetStatus, orderId]
             );
 
-            // update delivery date if the table is available
+            // Record the completion calendar date in the business timezone.
+            const [[clock]] = await conn.execute(
+                "SELECT DATE_FORMAT(UTC_TIMESTAMP(),'%Y-%m-%dT%H:%i:%sZ') AS completedAt"
+            );
             await conn.execute(
                 `update deliveries
-                set actual_date = current_date
+                set actual_date = ?
                 where order_id = ?`,
-                [orderId]
+                [businessDate(clock.completedAt), orderId]
             ).catch(() => { });
 
             // save the status change

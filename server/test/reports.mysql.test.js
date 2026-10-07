@@ -1,3 +1,6 @@
+import jwt from 'jsonwebtoken';
+import { createApp } from '../src/app.js';
+import { businessDaySql, businessDate } from '../../shared/time.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -127,7 +130,7 @@ test(
           },
         );
         await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
-          `${created} 00:00:00`,
+          businessDaySql(created),
           result.data.id,
         ]);
         await pool.execute(
@@ -317,14 +320,151 @@ test(
         );
         assert.equal(indexes.length, 2);
       });
+      await t.test('Central midnight determines day, quarter and year membership', async () => {
+        const existingNextYear = (await report('quarterly-sales', '?year=2027')).quarters[0]
+          .orderCount;
+        try {
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            '2026-04-01 04:59:59',
+            c,
+          ]);
+          assert.equal((await report('quarterly-sales', '?year=2026')).quarters[0].orderCount, 3);
+          assert.equal(
+            (await report('customer-orders', '?from=2026-03-31&to=2026-03-31')).items[0].orders[0]
+              .id,
+            c,
+          );
+          assert.deepEqual(
+            (await report('customer-orders', '?from=2026-04-01&to=2026-04-01')).items,
+            [],
+          );
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            '2026-04-01 05:00:00',
+            c,
+          ]);
+          assert.equal((await report('quarterly-sales', '?year=2026')).quarters[1].orderCount, 1);
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            '2027-01-01 05:59:59',
+            c,
+          ]);
+          assert.equal((await report('quarterly-sales', '?year=2026')).quarters[3].orderCount, 1);
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            '2027-01-01 06:00:00',
+            c,
+          ]);
+          assert.equal(
+            (await report('quarterly-sales', '?year=2027')).quarters[0].orderCount,
+            existingNextYear + 1,
+          );
+        } finally {
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            businessDaySql('2026-04-01'),
+            c,
+          ]);
+        }
+      });
+      await t.test('spring daylight-saving report days include 23 hours', async () => {
+        try {
+          const range = '?from=2026-03-08&to=2026-03-08';
+          for (const instant of ['2026-03-08 06:00:00', '2026-03-09 04:59:59']) {
+            await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [instant, c]);
+            assert.equal((await report('customer-orders', range)).items[0].orders[0].id, c);
+          }
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            '2026-03-09 05:00:00',
+            c,
+          ]);
+          assert.deepEqual((await report('customer-orders', range)).items, []);
+        } finally {
+          await pool.execute('UPDATE orders SET created_at=? WHERE id=?', [
+            businessDaySql('2026-04-01'),
+            c,
+          ]);
+        }
+      });
+      await t.test(
+        'completion near UTC midnight records the Central date and preserves its estimate',
+        async () => {
+          await pool.execute(
+            "UPDATE orders SET status='ready_for_pickup',stock_state='allocated' WHERE id=?",
+            [c],
+          );
+          const [[before]] = await pool.execute(
+            "SELECT DATE_FORMAT(estimated_date,'%Y-%m-%d') AS estimate FROM deliveries WHERE order_id=?",
+            [c],
+          );
+          const held = [];
+          const fixedPool = {
+            execute: pool.execute.bind(pool),
+            query: pool.query.bind(pool),
+            async getConnection() {
+              const connection = await pool.getConnection();
+              held.push(connection);
+              await connection.query('SET timestamp = ?', [
+                Date.parse('2026-07-01T02:00:00Z') / 1000,
+              ]);
+              return new Proxy(connection, {
+                get(target, key) {
+                  if (key === 'release') return () => {};
+                  const value = target[key];
+                  return typeof value === 'function' ? value.bind(target) : value;
+                },
+              });
+            },
+          };
+          const secret = 'central-completion-test-secret-at-least-32-characters';
+          const server = createApp(fixedPool, secret).listen(0, '127.0.0.1');
+          await new Promise((resolve) => server.once('listening', resolve));
+          try {
+            const token = jwt.sign({}, secret, {
+              subject: String(admin.id),
+              issuer: 'brightbuy',
+              audience: 'brightbuy-web',
+              expiresIn: '1h',
+            });
+            const response = await fetch(
+              `http://127.0.0.1:${server.address().port}/api/admin/orders/${c}/complete`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ requestKey: randomUUID(), cashReceived: true }),
+              },
+            );
+            assert.equal(response.status, 200, JSON.stringify(await response.json()));
+            const [[saved]] = await pool.execute(
+              "SELECT DATE_FORMAT(d.actual_date,'%Y-%m-%d') AS actualDate,DATE_FORMAT(d.estimated_date,'%Y-%m-%d') AS estimate,DATE_FORMAT(p.paid_at,'%Y-%m-%dT%H:%i:%sZ') AS paidAt FROM deliveries d JOIN payments p ON p.order_id=d.order_id WHERE d.order_id=?",
+              [c],
+            );
+            assert.equal(saved.actualDate, '2026-06-30');
+            assert.equal(saved.estimate, before.estimate);
+            assert.equal(saved.paidAt, '2026-07-01T02:00:00Z');
+          } finally {
+            await new Promise((resolve) => server.close(resolve));
+            for (const connection of held) {
+              await connection.query('SET timestamp = 0');
+              connection.release();
+            }
+          }
+        },
+      );
       // Actual plans are printed as evidence; indexes are assessed separately before migration.
       for (const [key, sql] of Object.entries(REPORT_QUERIES)) {
         const params =
           key === 'top'
-            ? ['2026-01-01', '2026-02-01', 10]
+            ? [businessDaySql('2026-01-01'), businessDaySql('2026-02-01'), 10]
             : key === 'customers'
-              ? ['2026-01-01', '2026-02-01', null, null]
-              : ['2026-01-01', '2026-02-01'];
+              ? [businessDaySql('2026-01-01'), businessDaySql('2026-02-01'), null, null]
+              : key === 'quarterly'
+                ? [
+                    '2026-04-01 05:00:00',
+                    '2026-07-01 05:00:00',
+                    '2026-10-01 05:00:00',
+                    '2026-01-01 06:00:00',
+                    '2027-01-01 06:00:00',
+                  ]
+                : key === 'upcoming'
+                  ? [businessDate(), '2026-01-01', '2026-02-01']
+                  : [businessDaySql('2026-01-01'), businessDaySql('2026-02-01')];
         const [plan] = await pool.query('EXPLAIN ' + sql, params);
         console.log(JSON.stringify({ report: key, plan }));
       }

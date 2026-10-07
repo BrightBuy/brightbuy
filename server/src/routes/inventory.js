@@ -80,6 +80,7 @@ export function createInventoryRoutes(db, requireAuthentication) {
 
         const conn = await db.getConnection();
         try {
+            await conn.query("SET time_zone = '+00:00'");
             await conn.beginTransaction();
 
             const movement = await applyStockChange(conn, {

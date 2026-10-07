@@ -1,3 +1,4 @@
+import { businessDate, addCalendarDays } from '../../shared/time.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -311,8 +312,7 @@ test(
             assert.equal(detail.body.data.status, scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed');
             assert.equal(detail.body.data.payment.status, scenario.payment === 'card'
               ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
-            const [[dates]] = await pool.execute('SELECT DATEDIFF(d.estimated_date,DATE(o.created_at)) AS days FROM deliveries d JOIN orders o ON o.id=d.order_id WHERE o.id=?', [outcome.orderId]);
-            assert.equal(dates.days, (scenario.main ? 5 : 7) + (scenario.shortage ? 3 : 0));
+            assert.equal(detail.body.data.delivery.estimatedDate, addCalendarDays(businessDate(detail.body.data.createdAt), (scenario.main ? 5 : 7) + (scenario.shortage ? 3 : 0)));
             const [[movements]] = await pool.execute("SELECT COUNT(*) AS count FROM inventory_movements WHERE order_id=? AND movement_type='cancellation'", [outcome.orderId]);
             assert.equal(movements.count, scenario.cancel && !scenario.shortage ? 1 : 0);
           }

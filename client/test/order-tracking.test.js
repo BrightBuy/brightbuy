@@ -8,7 +8,7 @@ test('recorded dates retain leap days and reject impossible dates', () => {
     assert.equal(calendarDate(value), 'Unavailable');
   }
 });
-test('overdue means an unfinished project promise before today in UTC', () => {
+test('overdue means an unfinished project promise before today in Central Time', () => {
   const order = {
     isLegacy: false,
     status: 'backordered',
