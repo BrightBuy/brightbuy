@@ -146,7 +146,7 @@ export function CartPage() {
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem' }}>
+        <div className="cart-layout">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {items.map((item) => {
               const isPending = pendingVariant === item.variantId;

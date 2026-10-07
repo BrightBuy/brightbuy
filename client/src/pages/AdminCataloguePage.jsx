@@ -1,3 +1,4 @@
+import { ProductImageEditor } from '../components/ProductImageEditor.jsx';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
@@ -116,7 +117,7 @@ function ProductsPanel() {
           products.length === 0 ? (
             <p>No products yet. Create one above.</p>
           ) : (
-            <table className="admin-table">
+            <div className="table-wrap"><table className="admin-table">
               <thead>
                 <tr>
                   <th>SKU</th>
@@ -150,7 +151,7 @@ function ProductsPanel() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )
         }
       </DataState>
@@ -314,6 +315,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
   }
 
   const readiness = [];
+  if (localProduct.currency !== 'USD') readiness.push('Requires a USD product with a reviewed USD price');
   if (!(localProduct.categories?.length)) readiness.push('Needs at least one category');
   if (!(localProduct.variants?.some((v) => v.isActive))) readiness.push('Needs an active variant');
   if (!(localProduct.variants?.some((v) => v.isDefault && v.isActive)))
@@ -322,6 +324,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
 
   return (
     <div className="product-editor">
+
       <div className="editor-header">
         <h2>
           Edit: {localProduct.name}{' '}
@@ -337,7 +340,8 @@ function ProductEditor({ product, onSaved, onCancel }) {
       {/* ── Activation readiness ── */}
       {!localProduct.isActive && (
         <div className="readiness-checklist">
-          <strong>Readiness checklist</strong>
+          <strong>Ready to publish?</strong>
+          {localProduct.currency !== 'USD' && <p className="form-error">This is a {localProduct.currency} sample product. Create a new USD product with a reviewed price to sell it; activation does not convert currencies.</p>}
           <ul>
             {['Needs at least one category', 'Needs an active variant', 'Needs an active default variant'].map(
               (item) => (
@@ -402,6 +406,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
               {/* Stock is read-only — M4 owns stock adjustments */}
               <small className="stock-note"> · Stock: {v.stock ?? 0} (adjust in Inventory)</small>
             </div>
+            <ProductImageEditor variantId={v.id} variantName={v.name} />
             <div className="variant-actions">
               {!v.isDefault && v.isActive && (
                 <button className="secondary" disabled={busy} onClick={() => handleSetDefault(v.id)}>
@@ -558,7 +563,7 @@ function CategoriesPanel() {
           cats.length === 0 ? (
             <p>No categories yet.</p>
           ) : (
-            <table className="admin-table">
+            <div className="table-wrap"><table className="admin-table">
               <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
               <tbody>
                 {cats.map((c) =>
@@ -583,7 +588,7 @@ function CategoriesPanel() {
                   ),
                 )}
               </tbody>
-            </table>
+            </table></div>
           )
         }
       </DataState>
@@ -629,7 +634,7 @@ function AttributesPanel() {
           attrs.length === 0 ? (
             <p>No attributes yet.</p>
           ) : (
-            <table className="admin-table">
+            <div className="table-wrap"><table className="admin-table">
               <thead><tr><th>Name</th><th></th></tr></thead>
               <tbody>
                 {attrs.map((a) =>
@@ -652,7 +657,7 @@ function AttributesPanel() {
                   ),
                 )}
               </tbody>
-            </table>
+            </table></div>
           )
         }
       </DataState>

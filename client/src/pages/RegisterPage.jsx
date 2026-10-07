@@ -61,7 +61,7 @@ export function RegisterPage() {
       <p className="eyebrow">NEW CUSTOMER</p>
       <h1>Create account</h1>
       <form onSubmit={submit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="form-pair">
           <label>
             First Name *
             <input name="firstName" type="text" maxLength={50} required />

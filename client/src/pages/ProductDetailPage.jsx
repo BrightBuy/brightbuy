@@ -1,3 +1,4 @@
+import { ProductImage } from '../components/ProductImage.jsx';
 import React, { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
@@ -6,7 +7,7 @@ import { formatMoney } from '../utils/format.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { addCartItem, quantity } from '../utils/interactions.js';
 import { api } from '../api.js';
-import { getProductImage, getProductMarketingData } from '../utils/productImages.js';
+import { getProductImage } from '../utils/productImages.js';
 
 // Shows modern AliExpress-style full product detail:
 // high-res product photo, price with discount tag, star rating,
@@ -39,11 +40,9 @@ function ProductDetail({ product, user, navigate }) {
   const adding = useRef(false);
 
   const selected = product.variants?.find((v) => v.id === selectedId) ?? defaultVariant;
-  const marketing = getProductMarketingData(product);
   const imgUrl = getProductImage(product);
 
   const currentPrice = selected?.price ?? 0;
-  const originalPrice = (Number(currentPrice) * (1 + marketing.discountPercent / 100)).toFixed(2);
 
   async function handleAddToCart() {
     if (!user) {
@@ -109,32 +108,11 @@ function ProductDetail({ product, user, navigate }) {
         {/* Left Column: Visuals & Guarantees */}
         <div className="detail-gallery-col">
           <div className="detail-image-wrapper">
-            <img
-              src={imgUrl}
-              alt={product.name}
-              className="detail-main-img"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80';
-              }}
-            />
-            {marketing.isChoice && (
-              <span className="detail-choice-tag">Choice Verified</span>
-            )}
-            <span className="detail-discount-tag">-{marketing.discountPercent}%</span>
+            <ProductImage product={product} variant={selected} className="detail-main-img" />
+
           </div>
 
-          <div className="detail-trust-badges">
-            <div className="trust-item">
-              <span>🚚</span> <strong>Free Express Shipping</strong> on Choice items
-            </div>
-            <div className="trust-item">
-              <span>🛡️</span> <strong>30-Day Free Return</strong> & Buyer Protection
-            </div>
-            <div className="trust-item">
-              <span>⚡</span> <strong>Fast Dispatch</strong> with tracking
-            </div>
-          </div>
+          <div className="detail-trust-badges"><p>Delivery or pickup · Choose your destination at checkout.</p><p>Track your order from your BrightBuy account.</p></div>
         </div>
 
         {/* Right Column: Information & Buy Box */}
@@ -148,33 +126,7 @@ function ProductDetail({ product, user, navigate }) {
           </div>
 
           {/* Social Proof Bar */}
-          <div className="detail-social-bar">
-            <div className="detail-rating">
-              <span>★</span> {marketing.rating}
-              <span className="rating-count">({Math.floor(120 + marketing.discountPercent * 28)} reviews)</span>
-            </div>
-            <span className="social-sep">·</span>
-            <span className="detail-sold-stat">{marketing.soldCount} sold</span>
-            <span className="social-sep">·</span>
-            <span className="detail-popular-tag">🔥 Trending item</span>
-          </div>
-
-          {/* AliExpress Pricing Banner */}
-          <div className="detail-price-banner">
-            <div className="price-primary-row">
-              <span className="detail-current-price">
-                {formatMoney(currentPrice, product.currency ?? 'USD')}
-              </span>
-              <span className="detail-original-price">
-                {formatMoney(originalPrice, product.currency ?? 'USD')}
-              </span>
-              <span className="detail-deal-badge">-{marketing.discountPercent}% OFF</span>
-            </div>
-            <div className="detail-deal-urgency">
-              <span>⚡ SuperDeal: Price available for limited quantities</span>
-            </div>
-          </div>
-
+          <div className="detail-price-banner"><span className="detail-current-price">{formatMoney(currentPrice, product.currency ?? 'USD')}</span></div>
           {/* Categories */}
           {product.categories?.length > 0 && (
             <div className="detail-categories-wrap">
@@ -196,7 +148,7 @@ function ProductDetail({ product, user, navigate }) {
           {product.variants?.length > 1 && (
             <div className="detail-variant-box">
               <label htmlFor="variant-select" className="meta-label">
-                <strong>Choose Option / Model:</strong>
+                <strong>Choose your model</strong>
               </label>
               <div className="variant-pills-row">
                 {product.variants.map((v) => {
@@ -243,17 +195,18 @@ function ProductDetail({ product, user, navigate }) {
                 <span className="meta-label">Availability:</span>
                 {inStock ? (
                   <span className="stock-status in-stock">
-                    ✅ In Stock ({stockCount} units ready to ship)
+                    In stock ({stockCount} available)
                   </span>
                 ) : (
                   <span className="stock-status backorder">
-                    📦 Available to backorder (ships immediately upon replenishment)
+                    Available to backorder — fulfillment depends on replenishment
                   </span>
                 )}
               </div>
             </div>
           )}
 
+          {product.currency !== 'USD' && <p role="note">This sample product is priced in {product.currency}. Checkout accepts USD products only.</p>}
           {/* Purchase Actions Box */}
           <div className="detail-buy-box">
             <div className="qty-picker-wrap">
@@ -294,9 +247,9 @@ function ProductDetail({ product, user, navigate }) {
               type="button"
               className="detail-add-cart-btn"
               onClick={handleAddToCart}
-              disabled={isAdding || !selected}
+              disabled={isAdding || !selected || product.currency !== 'USD'}
             >
-              {isAdding ? 'Adding to cart…' : user ? '🛒 Add to Cart' : 'Sign In to Add to Cart'}
+              {product.currency !== 'USD' ? 'Not available for checkout' : isAdding ? 'Adding to cart…' : user ? 'Add to bag →' : 'Sign In to Add to Cart'}
             </button>
           </div>
 

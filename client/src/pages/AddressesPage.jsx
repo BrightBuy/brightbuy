@@ -179,7 +179,7 @@ export function AddressesPage() {
               />
             </label>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-pair">
               <label>
                 Address Line 2
                 <input
@@ -203,7 +203,7 @@ export function AddressesPage() {
               </label>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+            <div className="form-pair">
               <label>
                 City *
                 <select value={cityId} onChange={(e) => setCityId(e.target.value)} required>
@@ -265,7 +265,7 @@ export function AddressesPage() {
           )}
         </div>
       ) : (
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '1rem' }}>
           {addresses.map((address) => (
             <address
               className="card"
