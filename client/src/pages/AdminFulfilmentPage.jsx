@@ -132,7 +132,7 @@ export function AdminFulfilmentPage() {
                     className="card"
                     style={{
                         background: '#ffffff',
-                        border: '2px solid #204c3c',
+                        border: '2px solid #255e49ff',
                         padding: '24px',
                         borderRadius: '12px',
                         marginBottom: '2rem',
