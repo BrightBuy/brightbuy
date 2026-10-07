@@ -1,12 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
+import { useAuth } from '../auth/AuthProvider.jsx';
+import { pendingAttempt } from '../utils/interactions.js';
+import { attemptPolicy } from '../utils/attempt-policy.js';
+import { postAttempt } from '../utils/post-attempt.js';
 import { api } from '../api.js';
 import { formatMoney, statusLabel } from '../utils/format.js';
 import { calendarDate, trackingStatus } from '../utils/order-tracking.js';
 
 export function AdminFulfilmentPage() {
+    const { user } = useAuth();
+    const inFlight = useRef(false);
+    const savedAction = (id, kind) => pendingAttempt(sessionStorage, 'brightbuy:fulfil:' + user.id + ':' + id + ':' + kind);
+    async function action(order, kind, fields = {}) {
+        const saved = savedAction(order.id, kind);
+        const payload = saved.read() || saved.save({ requestKey: crypto.randomUUID(), ...fields });
+        try {
+            const result = await postAttempt(api, '/admin/orders/' + order.id + '/' + kind, payload);
+            saved.clear(); return result;
+        } catch (error) {
+            if (attemptPolicy(error) === 'review') saved.clear();
+            throw error;
+        }
+    }
     const state = useData('/admin/orders');
 
 
@@ -24,26 +42,27 @@ export function AdminFulfilmentPage() {
 
 
     async function handleAllocate(order) {
+        if (inFlight.current) return;
+        inFlight.current = true;
         setBusyId(order.id);
         setError('');
         setSuccess('');
         try {
-            const requestKey = crypto.randomUUID();
-            await api(`/admin/orders/${order.id}/allocate`, {
-                method: 'POST',
-                body: JSON.stringify({ requestKey }),
-            });
+            await action(order, 'allocate');
             setSuccess(`Order #${order.id} stock successfully allocated!`);
             state.reload();
         } catch (err) {
             setError(err.message || 'Failed to allocate stock for order.');
         } finally {
+            inFlight.current = false;
             setBusyId(null);
         }
     }
 
 
     async function handleAdvanceStatus(order, nextStatus) {
+        if (inFlight.current) return;
+        inFlight.current = true;
         setBusyId(order.id);
         setError('');
         setSuccess('');
@@ -56,7 +75,9 @@ export function AdminFulfilmentPage() {
             state.reload();
         } catch (err) {
             setError(err.message || 'Failed to update order status.');
+            state.reload();
         } finally {
+            inFlight.current = false;
             setBusyId(null);
         }
     }
@@ -64,28 +85,22 @@ export function AdminFulfilmentPage() {
 
     async function handleCompleteSubmit(e) {
         e.preventDefault();
-        if (!completingOrder) return;
+        if (!completingOrder || inFlight.current) return;
 
         const isCod = completingOrder.payment?.method === 'cod';
         const isPending = completingOrder.payment?.status === 'pending';
 
-        if (isCod && isPending && !cashReceived) {
+        if (!savedAction(completingOrder.id, 'complete').read() && isCod && isPending && !cashReceived) {
             setError('You must confirm that cash payment was received for Cash-on-Delivery orders.');
             return;
         }
 
+        inFlight.current = true;
         setBusyId(completingOrder.id);
         setError('');
         setSuccess('');
         try {
-            const requestKey = crypto.randomUUID();
-            await api(`/admin/orders/${completingOrder.id}/complete`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    requestKey,
-                    cashReceived: Boolean(isCod && isPending ? cashReceived : false),
-                }),
-            });
+            await action(completingOrder, 'complete', { cashReceived: Boolean(isCod && isPending ? cashReceived : false) });
             setSuccess(`Order #${completingOrder.id} marked as completed!`);
             setCompletingOrder(null);
             setCashReceived(false);
@@ -93,6 +108,7 @@ export function AdminFulfilmentPage() {
         } catch (err) {
             setError(err.message || 'Failed to complete order.');
         } finally {
+            inFlight.current = false;
             setBusyId(null);
         }
     }
@@ -170,6 +186,7 @@ export function AdminFulfilmentPage() {
                                 <input
                                     type="checkbox"
                                     style={{ width: 'auto', cursor: 'pointer' }}
+                                    disabled={busyId !== null || Boolean(savedAction(completingOrder.id, 'complete').read())}
                                     checked={cashReceived}
                                     onChange={(e) => setCashReceived(e.target.checked)}
                                 />
@@ -181,7 +198,7 @@ export function AdminFulfilmentPage() {
 
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
                             <button type="submit" disabled={busyId === completingOrder.id}>
-                                {busyId === completingOrder.id ? 'Processing...' : 'Confirm Order Completion'}
+                                {busyId === completingOrder.id ? 'Processing...' : savedAction(completingOrder.id, 'complete').read() ? 'Retry same completion' : 'Confirm Order Completion'}
                             </button>
                             <button
                                 type="button"
@@ -336,22 +353,22 @@ export function AdminFulfilmentPage() {
                                                 <td>
                                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
 
-                                                        {order.status === 'backordered' && (
+                                                        {!order.isLegacy && order.status === 'backordered' && (
                                                             <button
                                                                 type="button"
-                                                                disabled={isBusy}
+                                                                disabled={busyId !== null}
                                                                 onClick={() => handleAllocate(order)}
                                                                 style={{ fontSize: '13px', padding: '6px 12px' }}
                                                             >
-                                                                {isBusy ? 'Allocating...' : 'Allocate Stock'}
+                                                                {isBusy ? 'Allocating...' : savedAction(order.id, 'allocate').read() ? 'Retry allocation' : 'Allocate Stock'}
                                                             </button>
                                                         )}
 
 
-                                                        {order.status === 'confirmed' && (
+                                                        {!order.isLegacy && order.status === 'confirmed' && (
                                                             <button
                                                                 type="button"
-                                                                disabled={isBusy}
+                                                                disabled={busyId !== null}
                                                                 onClick={() => handleAdvanceStatus(order, 'processing')}
                                                                 style={{ fontSize: '13px', padding: '6px 12px' }}
                                                             >
@@ -360,10 +377,10 @@ export function AdminFulfilmentPage() {
                                                         )}
 
 
-                                                        {order.status === 'processing' && order.fulfillment === 'delivery' && (
+                                                        {!order.isLegacy && order.status === 'processing' && order.fulfillment === 'delivery' && (
                                                             <button
                                                                 type="button"
-                                                                disabled={isBusy}
+                                                                disabled={busyId !== null}
                                                                 onClick={() => handleAdvanceStatus(order, 'shipped')}
                                                                 style={{ fontSize: '13px', padding: '6px 12px' }}
                                                             >
@@ -375,7 +392,7 @@ export function AdminFulfilmentPage() {
                                                         {order.status === 'processing' && order.fulfillment === 'pickup' && (
                                                             <button
                                                                 type="button"
-                                                                disabled={isBusy}
+                                                                disabled={busyId !== null}
                                                                 onClick={() => handleAdvanceStatus(order, 'ready_for_pickup')}
                                                                 style={{ fontSize: '13px', padding: '6px 12px' }}
                                                             >
@@ -384,13 +401,13 @@ export function AdminFulfilmentPage() {
                                                         )}
 
 
-                                                        {['shipped', 'ready_for_pickup'].includes(order.status) && (
+                                                        {!order.isLegacy && ['shipped', 'ready_for_pickup'].includes(order.status) && (
                                                             <button
                                                                 type="button"
-                                                                disabled={isBusy}
+                                                                disabled={busyId !== null}
                                                                 onClick={() => {
                                                                     setCompletingOrder(order);
-                                                                    setCashReceived(false);
+                                                                    setCashReceived(Boolean(savedAction(order.id, 'complete').read()?.cashReceived));
                                                                     setError('');
                                                                 }}
                                                                 style={{

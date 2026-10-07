@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { formatMoney } from '../utils/format.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
+import { addCartItem, quantity } from '../utils/interactions.js';
 import { api } from '../api.js';
 import { getProductImage, getProductMarketingData } from '../utils/productImages.js';
 
@@ -18,7 +19,7 @@ export function ProductDetailPage() {
 
   return (
     <DataState state={state}>
-      {(product) => <ProductDetail product={product} user={user} navigate={navigate} />}
+      {(product) => <ProductDetail key={product.id} product={product} user={user} navigate={navigate} />}
     </DataState>
   );
 }
@@ -35,6 +36,7 @@ function ProductDetail({ product, user, navigate }) {
   const [qty, setQty] = useState(1);
   const [cartMessage, setCartMessage] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const adding = useRef(false);
 
   const selected = product.variants?.find((v) => v.id === selectedId) ?? defaultVariant;
   const marketing = getProductMarketingData(product);
@@ -45,7 +47,7 @@ function ProductDetail({ product, user, navigate }) {
 
   async function handleAddToCart() {
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: `/products/${product.id}` } });
       return;
     }
 
@@ -55,17 +57,16 @@ function ProductDetail({ product, user, navigate }) {
       return;
     }
 
-    if (!selected) return;
+    if (!selected || adding.current) return;
+    if (quantity(qty) === null) { setCartMessage('Enter a whole quantity from 1 to 99.'); return; }
+    adding.current = true;
 
     setIsAdding(true);
     setCartMessage('');
 
     try {
       // Save item directly to database cart
-      await api(`/cart/items/${selected.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ quantity: qty }),
-      });
+      await addCartItem(api, selected.id, qty);
 
       // Dispatch decoupled event for any listening hooks
       window.dispatchEvent(
@@ -80,6 +81,7 @@ function ProductDetail({ product, user, navigate }) {
       setCartMessage(`⚠️ ${err.message || 'Could not add to cart.'}`);
       setTimeout(() => setCartMessage(''), 3500);
     } finally {
+      adding.current = false;
       setIsAdding(false);
     }
   }
@@ -261,7 +263,7 @@ function ProductDetail({ product, user, navigate }) {
                   type="button"
                   className="qty-btn"
                   onClick={() => setQty((prev) => Math.max(1, prev - 1))}
-                  disabled={qty <= 1}
+                  disabled={isAdding || qty <= 1}
                   aria-label="Decrease quantity"
                 >
                   −
@@ -272,14 +274,15 @@ function ProductDetail({ product, user, navigate }) {
                   min="1"
                   max="99"
                   value={qty}
-                  onChange={(e) => setQty(Math.max(1, Math.min(99, Number(e.target.value))))}
+                  onChange={(e) => setQty(e.target.value)}
                   className="qty-input-field"
                   aria-label="Quantity"
                 />
                 <button
                   type="button"
                   className="qty-btn"
-                  onClick={() => setQty((prev) => Math.min(99, prev + 1))}
+                  disabled={isAdding || Number(qty) >= 99}
+                  onClick={() => setQty((prev) => Math.min(99, Number(prev) + 1))}
                   aria-label="Increase quantity"
                 >
                   +
@@ -291,7 +294,7 @@ function ProductDetail({ product, user, navigate }) {
               type="button"
               className="detail-add-cart-btn"
               onClick={handleAddToCart}
-              disabled={isAdding}
+              disabled={isAdding || !selected}
             >
               {isAdding ? 'Adding to cart…' : user ? '🛒 Add to Cart' : 'Sign In to Add to Cart'}
             </button>

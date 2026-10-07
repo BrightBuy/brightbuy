@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { addCartItem } from '../utils/interactions.js';
 import { api } from '../api.js';
 import { formatMoney } from '../utils/format.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
@@ -21,6 +22,8 @@ export function ProductsPage() {
 
   const [categories, setCategories] = useState([]);
   const [result, setResult] = useState({ loading: true, data: null, error: '' });
+  const adding = useRef(false);
+  const [addingCart, setAddingCart] = useState(false);
   const [toast, setToast] = useState('');
   const [addedVariants, setAddedVariants] = useState({});
 
@@ -80,7 +83,7 @@ export function ProductsPage() {
     if (!variant) return;
 
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: `/products/${product.id}` } });
       return;
     }
 
@@ -90,11 +93,11 @@ export function ProductsPage() {
       return;
     }
 
+    if (adding.current) return;
+    adding.current = true;
+    setAddingCart(true);
     try {
-      await api(`/cart/items/${variant.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ quantity: 1 }),
-      });
+      await addCartItem(api, variant.id, 1);
       setAddedVariants((prev) => ({ ...prev, [variant.id]: true }));
       setToast(`🛒 Added ${product.name} to cart!`);
       setTimeout(() => setToast(''), 3000);
@@ -104,7 +107,7 @@ export function ProductsPage() {
     } catch (err) {
       setToast(`⚠️ ${err.message || 'Could not add to cart'}`);
       setTimeout(() => setToast(''), 3000);
-    }
+    } finally { adding.current = false; setAddingCart(false); }
   }
 
   const { loading, data, error } = result;
@@ -167,29 +170,7 @@ export function ProductsPage() {
 
         {/* Quick Promo & Category Nav Links */}
         <div className="ali-nav-links-scroll">
-          <button
-            type="button"
-            className={`ali-nav-link highlight-red ${activeTab === 'bundle' ? 'active' : ''}`}
-            onClick={() => setActiveTab('bundle')}
-          >
-            Bundle deals
-          </button>
-          <button
-            type="button"
-            className={`ali-nav-link ${activeTab === 'choice' ? 'active' : ''}`}
-            onClick={() => setActiveTab('choice')}
-          >
-            Choice
-          </button>
-          <button
-            type="button"
-            className={`ali-nav-link highlight-red ${activeTab === 'superdeals' ? 'active' : ''}`}
-            onClick={() => setActiveTab('superdeals')}
-          >
-            SuperDeals
-          </button>
-
-          {/* Database Categories */}
+          {/* Database categories are the supported catalogue filters. */}
           {categories.map((c) => (
             <button
               key={c.id}
@@ -329,6 +310,7 @@ export function ProductsPage() {
                           type="button"
                           className={`ali-thumb-cart-btn ${isRecentlyAdded ? 'added' : ''}`}
                           onClick={(e) => handleQuickAddToCart(e, product)}
+                          disabled={addingCart}
                           title="Quick add to cart"
                           aria-label={`Add ${product.name} to cart`}
                         >

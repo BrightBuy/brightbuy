@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider.jsx';
+import { pendingAttempt } from '../utils/interactions.js';
 import { api } from '../api.js';
 import { formatMoney } from '../utils/format.js';
 
@@ -8,6 +10,8 @@ import { postAttempt } from '../utils/post-attempt.js';
 
 export function CheckoutPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const saved = pendingAttempt(sessionStorage, 'brightbuy:checkout:' + user.id);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -19,9 +23,9 @@ export function CheckoutPage() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [attempt, setAttempt] = useState(null);
+  const [attempt, setAttempt] = useState(() => saved.read());
   const [needsResolution, setNeedsResolution] = useState(false);
-  const pending = useRef(null);
+  const pending = useRef(attempt);
   const inFlight = useRef(false);
 
   useEffect(() => {
@@ -36,8 +40,14 @@ export function CheckoutPage() {
         const usable = addresses.filter((address) =>
           address.country === 'US' && activeCities.has(address.cityId));
         setData({ cart, addresses: usable, stores });
-        setAddressId(String((usable.find((a) => a.isDefault) || usable[0])?.id || ''));
-        setStoreId(String(stores[0]?.id || ''));
+        setAddressId(String(pending.current?.addressId || (usable.find((a) => a.isDefault) || usable[0])?.id || ''));
+        if (pending.current) {
+          setFulfillment(pending.current.fulfillment);
+          setPaymentMethod(pending.current.paymentMethod);
+          setSimulationToken(pending.current.simulationToken || 'demo-approved');
+          setConsent(true);
+        }
+        setStoreId(String(pending.current?.storeId || stores[0]?.id || ''));
       })
       .catch((error) => {
         if (!controller.signal.aborted) setLoadError(error.message);
@@ -59,6 +69,7 @@ export function CheckoutPage() {
         cartVersion: data.cart.version,
         requestKey: crypto.randomUUID(),
       });
+      try { saved.save(payload); } catch (error) { setMessage(error.message); return; }
       pending.current = payload;
       setAttempt(payload);
     }
@@ -70,13 +81,15 @@ export function CheckoutPage() {
       if (!Number.isInteger(order?.id) || order.id < 1) {
         throw Object.assign(new Error('Invalid order response.'), { code: 'INVALID_RESPONSE' });
       }
+      saved.clear();
       pending.current = null;
       setAttempt(null);
       navigate(`/account/orders/${order.id}`);
     } catch (error) {
       const policy = attemptPolicy(error);
       if (policy === 'review') {
-        pending.current = null;
+        saved.clear();
+      pending.current = null;
         setAttempt(null);
         setConsent(false);
         setMessage(`${error.message} Review the form before making a new attempt.`);
@@ -117,6 +130,7 @@ export function CheckoutPage() {
       The whole order may be backordered, with no stock allocated yet.</p>}
     <p>The server rechecks current prices and stock when you submit. Taxes, discounts
       and delivery charges are zero in this project.</p>
+    {attempt && <p role="status">A saved checkout attempt is pending. Retry it to confirm the result using its original details.</p>}
     {message && <p className="error" role="alert">{message}</p>}
     <form onSubmit={submit}>
       <fieldset disabled={busy || Boolean(attempt)}>
@@ -163,8 +177,6 @@ export function CheckoutPage() {
       </button>
     </form>
     <p><Link to="/account/addresses">Manage addresses</Link> · <Link to="/cart">Review cart</Link></p>
-    <p>If the result is uncertain, retry here before leaving. Refreshing or leaving
-      this page loses this saved attempt. After signing in again, check
-      <Link to="/account/orders"> My orders</Link> before starting another checkout.</p>
+    <p>Pending attempts are saved for this account in this browser tab. Return here after signing in to retry the same attempt, or check <Link to="/account/orders">My orders</Link>.</p>
   </section>;
 }

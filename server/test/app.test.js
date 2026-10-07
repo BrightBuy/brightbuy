@@ -52,7 +52,7 @@ const db = {
       return [users.filter((u) => String(u.id) === params[0])];
     }
     if (sql.includes('FROM addresses')) return [[{ id: params[0], customerId: params[0] }]];
-    if (sql.includes('FROM orders')) {
+    if (/FROM orders/i.test(sql)) {
       if (sql.includes('AND (customer_id'))
         return [
           [
@@ -63,12 +63,12 @@ const db = {
         ];
       return [[...(params[0] === order.id ? [{ ...order }] : [])]];
     }
-    if (sql.includes('UPDATE orders')) {
+    if (/UPDATE orders/i.test(sql)) {
       if (concurrent) return [{ affectedRows: 0 }];
       order.status = params[0];
       return [{ affectedRows: 1 }];
     }
-    if (sql.includes('INSERT INTO order_status_history')) {
+    if (/INSERT INTO order_status_history/i.test(sql)) {
       statusHistory.push({ orderId: params[0], fromStatus: params[1], toStatus: params[2], actorId: params[3] });
       return [{ affectedRows: 1 }];
     }
@@ -220,8 +220,8 @@ test('project orders cannot bypass dedicated actions using generic status PATCH'
     const result = await request('/api/admin/orders/1/status', {
       id: 2, method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }),
     });
-    assert.equal(result.status, 409);
-    assert.equal(result.body.error.code, 'PROJECT_ORDER_ACTION_REQUIRED');
+    assert.equal(result.status, 403);
+    assert.equal(result.body.error.code, 'FORBIDDEN_TRANSITION');
     assert.deepEqual(statusHistory, []);
   } finally {
     delete order.stockState;
@@ -354,4 +354,22 @@ test('backorder rules resist direct mutation and returned-list mutation', () => 
   const offered = nextStatuses('backordered', 'delivery');
   offered.push('processing');
   assert.deepEqual(nextStatuses('backordered', 'delivery'), ['confirmed', 'cancelled']);
+});
+
+
+test('mounted project status transitions reach the fulfilment handler', async () => {
+  order.status = 'confirmed';
+  order.stockState = 'allocated';
+  order.wasOutOfStock = 0;
+  try {
+    const result = await request('/api/admin/orders/1/status', {
+      id: 2, method: 'PATCH', body: JSON.stringify({ status: 'processing' }),
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.data.status, 'processing');
+    assert.deepEqual(statusHistory, [{ orderId: 1, fromStatus: 'confirmed', toStatus: 'processing', actorId: 2 }]);
+  } finally {
+    delete order.stockState;
+    delete order.wasOutOfStock;
+  }
 });

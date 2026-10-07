@@ -53,7 +53,7 @@ export function createOrderRoutes(db, requireAuthentication) {
     '/admin/orders/:id/status',
     requireAuthentication,
     requireAdmin,
-    async (req, res) => {
+    async (req, res, next) => {
       const id = positiveId(req.params.id);
       const body = req.body;
       if (
@@ -64,7 +64,7 @@ export function createOrderRoutes(db, requireAuthentication) {
       ) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'Provide only a status string.');
       }
-      const data = await inTransaction(db, async (connection) => {
+      await inTransaction(db, async (connection) => {
         const [orders] = await connection.execute(
           `${ORDER_SELECT} WHERE id = ? FOR UPDATE`,
           [id],
@@ -75,11 +75,10 @@ export function createOrderRoutes(db, requireAuthentication) {
         if (order.stockState == null && order.wasOutOfStock == null) {
           throw new ApiError(409, 'LEGACY_ORDER_REQUIRES_MIGRATION', 'Legacy orders are read-only.');
         }
-        // M4's dedicated fulfilment actions must update stock/payment/history together.
-        throw new ApiError(409, 'PROJECT_ORDER_ACTION_REQUIRED',
-          'Use the project fulfilment or cancellation action.');
+        // The following fulfilment router owns project status transitions.
+        return order;
       });
-      res.json({ data });
+      next();
     },
   );
   return router;

@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { returnPath } from '../utils/interactions.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   async function submit(event) {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError('');
     const form = new FormData(event.currentTarget);
     try {
       const user = await login(form.get('email'), form.get('password'));
-      navigate(user.role === 'admin' ? '/admin' : '/account/orders');
+      navigate(returnPath(location.state?.from, user.role), { replace: true });
     } catch (error) {
       setError(error.message);
     } finally {
@@ -25,10 +28,11 @@ export function LoginPage() {
     <section className="login card">
       <p className="eyebrow">WELCOME BACK</p>
       <h1>Sign in</h1>
+      {location.state?.registered && <p role="status">Account created. Sign in to continue.</p>}
       <form onSubmit={submit}>
         <label>
           Email
-          <input name="email" type="email" autoComplete="username" required />
+          <input name="email" defaultValue={location.state?.email || ''} type="email" autoComplete="username" required />
         </label>
         <label>
           Password

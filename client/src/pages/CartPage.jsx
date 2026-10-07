@@ -1,25 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
+import { QuantityInput } from '../components/QuantityInput.jsx';
 import { api } from '../api.js';
 
 export function CartPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const mutation = useRef(false);
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pendingVariant, setPendingVariant] = useState(null);
 
-  const loadCart = useCallback(async () => {
+  const loadCart = useCallback(async (clearError = true) => {
     setLoading(true);
-    setError('');
+    if (clearError) setError('');
     try {
       const result = await api('/cart');
       setCart(result);
     } catch (err) {
       setError(err.message || 'Failed to load cart.');
     } finally {
+      mutation.current = false;
+      setPendingVariant(null);
       setLoading(false);
     }
   }, []);
@@ -33,7 +37,8 @@ export function CartPage() {
   }, [user, loadCart]);
 
   async function updateQuantity(variantId, newQuantity) {
-    if (newQuantity < 1 || newQuantity > 99) return;
+    if (!Number.isInteger(newQuantity) || newQuantity < 1 || newQuantity > 99 || mutation.current) return;
+    mutation.current = true;
     setPendingVariant(variantId);
     setError('');
     try {
@@ -44,13 +49,16 @@ export function CartPage() {
       setCart(updated);
     } catch (err) {
       setError(err.message || 'Failed to update item quantity.');
-      await loadCart();
+      await loadCart(false);
     } finally {
+      mutation.current = false;
       setPendingVariant(null);
     }
   }
 
   async function removeItem(variantId) {
+    if (mutation.current) return;
+    mutation.current = true;
     setPendingVariant(variantId);
     setError('');
     try {
@@ -60,14 +68,18 @@ export function CartPage() {
       setCart(updated);
     } catch (err) {
       setError(err.message || 'Failed to remove item.');
-      await loadCart();
+      await loadCart(false);
     } finally {
+      mutation.current = false;
       setPendingVariant(null);
     }
   }
 
   async function clearCart() {
+    if (mutation.current) return;
     if (!window.confirm('Are you sure you want to clear your cart?')) return;
+    mutation.current = true;
+    setPendingVariant('all');
     setLoading(true);
     try {
       const updated = await api('/cart', { method: 'DELETE' });
@@ -75,6 +87,8 @@ export function CartPage() {
     } catch (err) {
       setError(err.message || 'Failed to clear cart.');
     } finally {
+      mutation.current = false;
+      setPendingVariant(null);
       setLoading(false);
     }
   }
@@ -93,7 +107,7 @@ export function CartPage() {
   }
 
   if (loading) return <p>Loading your cart…</p>;
-  if (error && !cart) return <p className="error" role="alert">{error}</p>;
+  if (error && !cart) return <><p className="error" role="alert">{error}</p><button onClick={() => loadCart()}>Retry</button></>;
 
   const items = cart?.items || [];
   const isEmpty = items.length === 0;
@@ -105,7 +119,7 @@ export function CartPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1>Shopping Cart</h1>
         {!isEmpty && (
-          <button onClick={clearCart} className="button secondary" style={{ color: '#dc2626' }}>
+          <button onClick={clearCart} disabled={pendingVariant !== null} className="button secondary" style={{ color: '#dc2626' }}>
             Clear Cart
           </button>
         )}
@@ -180,27 +194,16 @@ export function CartPage() {
                       <label style={{ fontSize: '0.9rem', margin: 0 }}>Quantity:</label>
                       <button
                         className="button secondary"
-                        disabled={isPending || item.quantity <= 1}
+                        disabled={pendingVariant !== null || item.quantity <= 1}
                         onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
                         style={{ padding: '0.2rem 0.6rem' }}
                       >
                         -
                       </button>
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        value={item.quantity}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (val >= 1 && val <= 99) updateQuantity(item.variantId, val);
-                        }}
-                        disabled={isPending}
-                        style={{ width: '60px', textAlign: 'center', padding: '0.25rem' }}
-                      />
+                      <QuantityInput value={item.quantity} label={`Quantity for ${item.productName}`} disabled={pendingVariant !== null} onCommit={(value) => updateQuantity(item.variantId, value)} />
                       <button
                         className="button secondary"
-                        disabled={isPending || item.quantity >= 99}
+                        disabled={pendingVariant !== null || item.quantity >= 99}
                         onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
                         style={{ padding: '0.2rem 0.6rem' }}
                       >
@@ -211,7 +214,7 @@ export function CartPage() {
                     <button
                       onClick={() => removeItem(item.variantId)}
                       className="button secondary"
-                      disabled={isPending}
+                      disabled={pendingVariant !== null}
                       style={{ color: '#dc2626', fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
                     >
                       Remove
@@ -234,9 +237,9 @@ export function CartPage() {
               </p>
 
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => { if (!mutation.current) navigate('/checkout'); }}
                 className="button"
-                disabled={hasUnavailableItems}
+                disabled={hasUnavailableItems || pendingVariant !== null}
                 style={{
                   width: '100%',
                   marginTop: '1rem',
