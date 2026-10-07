@@ -1,6 +1,7 @@
 import { test, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../src/app.js';
+import { computeCombinationKey } from '../src/services/catalogue.js';
 
 let server, base;
 const secret = 'test-only-secret-that-is-at-least-32-characters';
@@ -457,3 +458,50 @@ test('GET /api/products maintains array backward compatibility', async () => {
   assert.equal(res.body.data[0].id, 1);
   assert.ok(Array.isArray(res.body.data[0].variants));
 });
+
+// -----------------------------------------------------------------------------
+// Edge Cases & Invariants
+// -----------------------------------------------------------------------------
+
+test('computeCombinationKey normalizes attribute values and orders by attributeId', () => {
+  // Empty attribute values produce empty string (single variant without attributes)
+  assert.equal(computeCombinationKey([]), '');
+  assert.throws(() => computeCombinationKey(null), { code: 'VALIDATION_ERROR' });
+
+  // Out of order attributeIds must sort ascending
+  const key1 = computeCombinationKey([
+    { attributeId: 2, value: '  128 GB ' },
+    { attributeId: 1, value: ' Midnight BLUE' },
+  ]);
+  assert.equal(key1, 'attr:1=midnight blue|attr:2=128 gb');
+
+  // Identical attributes in different case and spacing yield identical canonical key
+  const key2 = computeCombinationKey([
+    { attributeId: 1, value: 'midnight blue' },
+    { attributeId: 2, value: '128 gb' },
+  ]);
+  assert.equal(key1, key2);
+});
+
+test('GET /api/catalogue boundary checks: reject negative page, zero page, and oversize pageSize', async () => {
+  const resZeroPage = await request('/api/catalogue?page=0');
+  assert.equal(resZeroPage.status, 400);
+  assert.equal(resZeroPage.body.error.code, 'VALIDATION_ERROR');
+
+  const resNegPage = await request('/api/catalogue?page=-1');
+  assert.equal(resNegPage.status, 400);
+
+  const resOversize = await request('/api/catalogue?pageSize=100');
+  assert.equal(resOversize.status, 400);
+  assert.equal(resOversize.body.error.code, 'VALIDATION_ERROR');
+});
+
+test('GET /api/categories returns alphabetically sorted categories', async () => {
+  const res = await request('/api/categories');
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(res.body.data));
+  assert.equal(res.body.data.length, 2);
+  assert.equal(res.body.data[0].name, 'Audio');
+  assert.equal(res.body.data[1].name, 'Smart Home');
+});
+
