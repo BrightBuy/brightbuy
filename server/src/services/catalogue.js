@@ -2,6 +2,40 @@ import { ApiError } from '../errors.js';
 import { parseMoney, formatMoneyUnits } from '../utils/money.js';
 
 /**
+ * =============================================================================
+ * BrightBuy Catalogue Service — Architecture & Design Invariants
+ * =============================================================================
+ *
+ * 1. TRANSACTIONAL LOCKING HIERARCHY (Deadlock Prevention):
+ *    - Always lock parent `products` row first (`SELECT id FROM products WHERE id = ? FOR UPDATE`).
+ *    - Then lock child `variants` rows strictly in ascending primary key order
+ *      (`SELECT id, ... FROM variants WHERE product_id = ? ORDER BY id ASC FOR UPDATE`).
+ *    - Never acquire customer, cart, or order locks during catalogue mutations to prevent
+ *      cross-domain deadlocks.
+ *
+ * 2. CANONICAL COMBINATION KEYS:
+ *    - To enforce that no two variants of the same product have identical attribute configurations,
+ *      variant attribute values are normalized: trimmed, lowercased, sorted by ascending attribute ID,
+ *      and formatted as `attr:<id>=<normalized_value>|...`.
+ *    - Variants without attributes receive combination_key = "" (allowing at most one default-only
+ *      variant per product).
+ *    - Uniqueness is enforced by MySQL constraint:
+ *      `CONSTRAINT uq_variant_product_combination UNIQUE (product_id, combination_key)`
+ *
+ * 3. DEFAULT VARIANT AT-MOST-ONE CONSTRAINT:
+ *    - MySQL enforces that a product has at most one default variant via a virtual generated column:
+ *      `default_key INT GENERATED ALWAYS AS (CASE WHEN is_default=1 THEN 1 ELSE NULL END) VIRTUAL`
+ *      `CONSTRAINT uq_variant_product_default UNIQUE (product_id, default_key)`
+ *    - Since NULL values do not collide in MySQL UNIQUE indexes, multiple non-default variants
+ *      (where default_key IS NULL) can coexist, while two default variants (default_key = 1) collide.
+ *
+ * 4. FINANCIAL EXACTNESS & CURRENCY BOUNDARY:
+ *    - All price conversions use BigInt minor units via parseMoney() and formatMoneyUnits().
+ *    - Floating point math is strictly avoided. New project products default to 'USD'.
+ * =============================================================================
+ */
+
+/**
  * Run operations within a database transaction, handling commit, rollback and release.
  */
 export async function withTransaction(db, fn) {
