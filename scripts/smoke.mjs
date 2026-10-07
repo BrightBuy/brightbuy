@@ -181,7 +181,15 @@ assert.equal((await call('/products/999999')).status, 404);
 
 // Admin catalogue reads — require authentication
 assert.equal((await call('/admin/products')).status, 401);
-assert.equal((await call('/admin/categories')).status, 401);
+// Category reads are public; category mutations require an administrator.
+for (const [headers, expectedStatus] of [[{}, 401], [customer, 403]]) {
+  const response = await call('/admin/categories', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Unauthorized smoke category' }),
+  });
+  assert.equal(response.status, expectedStatus);
+}
 assert.equal((await call('/admin/attributes')).status, 401);
 assert.equal((await call('/admin/products', { headers: customer })).status, 403);
 
@@ -190,7 +198,7 @@ const adminProducts = await call('/admin/products', { headers: admin });
 assert.equal(adminProducts.status, 200);
 assert.ok(Array.isArray(adminProducts.body.data), 'Admin products must be an array');
 assert.ok(adminProducts.body.data.length >= 40, 'Admin list must include 40+ project products');
-const adminCategories = await call('/admin/categories', { headers: admin });
+const adminCategories = await call('/categories', { headers: admin });
 assert.equal(adminCategories.status, 200);
 assert.ok(adminCategories.body.data.length >= 10, 'Admin categories must have at least 10 entries');
 const adminAttributes = await call('/admin/attributes', { headers: admin });

@@ -151,17 +151,16 @@ test(
           assert.equal(old.body.data.isLegacy, true);
           assert.equal(old.body.data.payment, null);
           assert.deepEqual(old.body.data.nextStatuses, []);
-          assert.equal(
-            (
-              await request(
-                `/admin/orders/${orderId}/status`,
-                admin.id,
-                { status: 'processing' },
-                'PATCH',
-              )
-            ).status,
-            409,
+          // The dedicated cancellation endpoint is required; preserve the confirmed fixture.
+          const forbidden = await request(
+            '/admin/orders/' + orderId + '/status', admin.id,
+            { status: 'cancelled' }, 'PATCH',
           );
+          assert.equal(forbidden.status, 403);
+          assert.equal(forbidden.body.error.code, 'FORBIDDEN_TRANSITION');
+          const unchanged = await request('/orders/' + orderId, owner.id);
+          assert.equal(unchanged.body.data.status, 'confirmed');
+          assert.deepEqual(unchanged.body.data.history, detail.history);
         },
       );
       await t.test(
@@ -197,6 +196,23 @@ test(
           assert.equal(detail.delivery.estimatedDate, result.data.delivery.estimatedDate);
         },
       );
+      await t.test('ordinary processing transitions persist on a separate order', async () => {
+        const cart = await putCartItem(pool, owner.id, variant.id, 1);
+        const created = await request('/orders', owner.id, {
+          fulfillment: 'pickup', storeId: store.id, paymentMethod: 'cod',
+          cartVersion: cart.version, requestKey: randomUUID(),
+        });
+        assert.equal(created.status, 201);
+        const id = created.body.data.id;
+        const changed = await request('/admin/orders/' + id + '/status', admin.id,
+          { status: 'processing' }, 'PATCH');
+        assert.equal(changed.status, 200);
+        const detail = await request('/orders/' + id, owner.id);
+        assert.equal(detail.status, 200);
+        assert.equal(detail.body.data.status, 'processing');
+        assert.equal(detail.body.data.history.at(-1).fromStatus, 'confirmed');
+        assert.equal(detail.body.data.history.at(-1).toStatus, 'processing');
+      });
       async function snapshot() {
         const data = {};
         for (const table of ['orders', 'payments', 'inventory_movements', 'order_status_history', 'carts', 'variants']) {
