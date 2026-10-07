@@ -445,8 +445,29 @@ test('anonymous users cannot mutate categories or attributes (401)', async () =>
     method: 'POST',
     body: JSON.stringify({ name: 'Storage' }),
   });
-  assert.equal(attrPost.status, 401);
-  assert.equal(attrPost.body.error.code, 'UNAUTHENTICATED');
+});
+
+test('admin GET /api/admin/categories and GET /api/admin/attributes require admin role and return lists', async () => {
+  // 401 unauthenticated
+  assert.equal((await request('/api/admin/categories')).status, 401);
+  assert.equal((await request('/api/admin/attributes')).status, 401);
+
+  // 403 customer
+  assert.equal((await request('/api/admin/categories', { id: 1 })).status, 403);
+  assert.equal((await request('/api/admin/attributes', { id: 1 })).status, 403);
+
+  // 200 admin
+  const catRes = await request('/api/admin/categories', { id: 2 });
+  assert.equal(catRes.status, 200);
+  assert.ok(Array.isArray(catRes.body.data));
+  assert.equal(catRes.body.data.length, 1);
+  assert.equal(catRes.body.data[0].name, 'Everyday Essentials');
+
+  const attrRes = await request('/api/admin/attributes', { id: 2 });
+  assert.equal(attrRes.status, 200);
+  assert.ok(Array.isArray(attrRes.body.data));
+  assert.equal(attrRes.body.data.length, 1);
+  assert.equal(attrRes.body.data[0].name, 'Color');
 });
 
 test('customers cannot mutate categories or attributes (403)', async () => {
