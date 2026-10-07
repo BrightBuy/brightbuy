@@ -1,3 +1,5 @@
+import { HomePage } from './pages/HomePage.jsx';
+import { AboutPage, ContactPage } from './pages/InfoPages.jsx';
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider.jsx';
@@ -29,8 +31,10 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<MainLayout />}>
-            <Route index element={<ProductsPage />} />
+            <Route index element={<HomePage />} />
             <Route path="products" element={<ProductsPage />} />
+            <Route path="about" element={<AboutPage />} />
+            <Route path="contact" element={<ContactPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />

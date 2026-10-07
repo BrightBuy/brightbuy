@@ -259,3 +259,35 @@ test('a failed replacement login preserves the current account and bearer token'
   await api('/orders');
   assert.equal(authorization, 'Bearer current-token');
 });
+
+
+test('catalogue does not offer legacy currency products to USD checkout', async () => {
+  const { ProductsPage } = await import('../src/pages/ProductsPage.jsx');
+  const writes = [];
+  await mount(ProductsPage, async (path, options) => {
+    if (options.method) writes.push(path);
+    if (path === '/categories') return [];
+    return { total: 2, items: [
+      { id: 3, name: 'Canvas Backpack', currency: 'LKR', defaultVariant: { id: 5, price: '6800.00' } },
+      { id: 4, name: 'USD headphones', currency: 'USD', defaultVariant: { id: 6, price: '40.00' } },
+    ] };
+  });
+  assert.equal(document.querySelector('[aria-label="Add Canvas Backpack to cart"]').disabled, true);
+  assert.equal(document.querySelector('[aria-label="Add USD headphones to cart"]').disabled, false);
+  assert.match(document.body.textContent, /Not available for checkout/);
+  assert.deepEqual(writes, []);
+});
+
+
+test('product imagery follows the selected variant and resets fallback for another variant', async () => {
+ const { ProductImage } = await import('../src/components/ProductImage.jsx');
+ const product={id:1,name:'Headphones',defaultVariant:{id:10,name:'Black'}};
+ root=createRoot(document.getElementById('root'));
+ await React.act(async()=>root.render(h(ProductImage,{product})));
+ assert.match(document.querySelector('img').src,/variants\/10\/image$/);
+ await React.act(async()=>document.querySelector('img').dispatchEvent(new window.Event('error')));
+ assert.ok(!document.querySelector('img').src.includes('/variants/10/image'));
+ await React.act(async()=>root.render(h(ProductImage,{product,variant:{id:11,name:'White'}})));
+ assert.match(document.querySelector('img').src,/variants\/11\/image$/);
+ assert.equal(document.querySelector('img').alt,'Headphones — White');
+});

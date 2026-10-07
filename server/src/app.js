@@ -1,4 +1,5 @@
 import express from 'express';
+import { createProductImageRoutes } from './routes/product-images.js';
 import { randomUUID } from 'node:crypto';
 import { ApiError, errorHandler } from './errors.js';
 import { createAuthMiddleware } from './middleware/auth.js';
@@ -40,6 +41,7 @@ export function createApp(db, secret) {
     res.set('X-Request-Id', req.id);
     next();
   });
+  app.use('/api', createProductImageRoutes(db, auth));
   app.use(express.json({ limit: '32kb' }));
   app.get('/api/health', async (req, res) => {
     try {

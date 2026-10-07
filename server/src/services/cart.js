@@ -139,7 +139,9 @@ export async function putCartItem(db, customerId, variantId, quantity) {
       throw new ApiError(
         409,
         'VARIANT_UNAVAILABLE',
-        'Variant is inactive or unavailable for purchase.',
+        v.productCurrency !== 'USD'
+          ? 'This product uses ' + v.productCurrency + '. Checkout supports USD products only; ask the store to publish a USD version.'
+          : 'This product or variant is inactive and cannot be purchased.',
       );
     }
 
