@@ -45,7 +45,7 @@ export function OrdersPage({ admin = false }) {
                             {order.status === 'cancelled'
                               ? 'Original: '
                               : order.fulfillment === 'pickup'
-                                ? 'Ready: '
+                                ? 'Estimated ready: '
                                 : 'Delivery: '}
                             {order.fulfillment === 'pickup' ? 'See pickup status' : calendarDate(order.delivery.estimatedDate)}
                           </>

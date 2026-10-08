@@ -35,3 +35,7 @@
     display: grid;
   }
 }
+
+.report-export {
+  margin-bottom: 20px;
+}

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
 import { calendarDate, trackingStatus } from '../utils/order-tracking.js';
+import { downloadReportCsv } from '../utils/report-csv.js';
 import './AdminReportsPage.css';
 
 const reports = [
@@ -112,7 +113,7 @@ function ReportResult({ name, data }) {
         ]}
         rows={data.items.map((row) => [
           <Link to={`/admin/orders/${row.orderId}`}>#{row.orderId}</Link>,
-          row.fulfillment === 'pickup' ? 'Pickup ready' : 'Delivery',
+          row.fulfillment === 'pickup' ? 'Pickup' : 'Delivery',
           trackingStatus(row.status),
           calendarDate(row.estimatedDate),
           row.actualDate ? calendarDate(row.actualDate) : 'Not recorded',
@@ -284,6 +285,19 @@ export function AdminReportsPage() {
                   ? ` · Year: ${data.year}`
                   : ` · ${calendarDate(data.from)} to ${calendarDate(data.to)} (inclusive)`}
               </p>
+              <button
+                className="report-export"
+                type="button"
+                onClick={() =>
+                  downloadReportCsv(applied.name, data, {
+                    title: selected[1],
+                    description: selected[2],
+                    query: applied.query,
+                  })
+                }
+              >
+                Export CSV
+              </button>
               <ReportResult name={applied.name} data={data} />
             </>
           )}
