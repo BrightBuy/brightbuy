@@ -38,8 +38,8 @@ export function App() {
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
+            <Route path="cart" element={<CartPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="cart" element={<CartPage />} />
               <Route path="account/profile" element={<ProfilePage />} />
               <Route path="account/orders" element={<OrdersPage />} />
               <Route path="account/orders/:id" element={<OrderDetailPage />} />
@@ -59,6 +59,7 @@ export function App() {
               <Route path="checkout" element={<CheckoutPage />} />
             </Route>
           </Route>
+          <Route element={<ProtectedRoute warehouse />}><Route path="warehouse" element={<MainLayout />}><Route index element={<AdminInventoryPage />} /></Route></Route>
           <Route element={<ProtectedRoute admin />}>
             <Route path="admin" element={<MainLayout admin />}>
               <Route index element={<AdminOverviewPage />} />

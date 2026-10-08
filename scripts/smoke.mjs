@@ -89,7 +89,7 @@ for (const [headers, customerId, expectedCount] of [
     const detail = await call(`/orders/${summary.id}`, { headers });
     assert.equal(detail.status, 200);
     assert.match(detail.body.data.total, /^\d+\.\d{2}$/);
-    assert.equal(detail.body.data.currency, 'LKR');
+    assert.equal(detail.body.data.currency, 'USD');
     assert.equal(new Date(summary.createdAt).toISOString(), summary.createdAt);
     // Foundation samples have no verified checkout/payment/fulfilment metadata.
     // They stay readable, but must not advertise project lifecycle actions.
@@ -229,7 +229,7 @@ if (process.env.SMOKE_CHECKOUT_DEMOS === 'true') {
       ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
     assert.equal(order.history.at(-1).toStatus, order.status);
     assert.equal(order.delivery.mode, scenario.mode);
-    assert.match(order.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/);
+    if (order.fulfillment === 'delivery') assert.match(order.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/); else assert.equal(order.delivery.estimatedDate, null);
   }
   console.log('Checkout demo API scenarios passed.');
 }

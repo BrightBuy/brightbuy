@@ -6,8 +6,8 @@ test('formatMoney formats amounts with currency symbol and 2 decimals', () => {
   const usdFormatted = formatMoney('40.00', 'USD');
   assert.ok(usdFormatted.includes('40.00'));
 
-  const lkrFormatted = formatMoney('2500.00', 'LKR');
-  assert.ok(lkrFormatted.includes('2,500.00') || lkrFormatted.includes('2500.00'));
+  assert.equal(formatMoney('2500.00'), '$2,500.00');
+  assert.equal(formatMoney('29.99'), '$29.99');
 });
 
 test('formatMoney does not coerce invalid numbers silently', () => {

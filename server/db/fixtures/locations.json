@@ -1,12 +1,46 @@
 {
   "description": "Fictional development pickup stores and assumed city classifications. These are not verified business locations.",
   "cities": [
-    { "name": "Dallas", "isMainCity": true, "isActive": true },
-    { "name": "Austin", "isMainCity": true, "isActive": true },
-    { "name": "Houston", "isMainCity": true, "isActive": true },
-    { "name": "Waco", "isMainCity": false, "isActive": true },
-    { "name": "Tyler", "isMainCity": false, "isActive": true },
-    { "name": "El Paso", "isMainCity": false, "isActive": false }
+    {
+      "name": "Dallas",
+      "isMainCity": true,
+      "isActive": true
+    },
+    {
+      "name": "Austin",
+      "isMainCity": true,
+      "isActive": true
+    },
+    {
+      "name": "Houston",
+      "isMainCity": true,
+      "isActive": true
+    },
+    {
+      "name": "Waco",
+      "isMainCity": false,
+      "isActive": true
+    },
+    {
+      "name": "Tyler",
+      "isMainCity": false,
+      "isActive": true
+    },
+    {
+      "name": "El Paso",
+      "isMainCity": true,
+      "isActive": true
+    },
+    {
+      "name": "San Antonio",
+      "isMainCity": true,
+      "isActive": true
+    },
+    {
+      "name": "Fort Worth",
+      "isMainCity": true,
+      "isActive": true
+    }
   ],
   "stores": [
     {

@@ -1,3 +1,4 @@
+import { createDashboardRoutes } from './routes/dashboard.js';
 import express from 'express';
 import { createProductImageRoutes } from './routes/product-images.js';
 import { randomUUID } from 'node:crypto';
@@ -60,6 +61,7 @@ export function createApp(db, secret) {
   app.use('/api', createFulfilmentRoutes(db, auth));
   app.use('/api', createLocationRoutes(db, auth));
   app.use('/api', createInventoryRoutes(db, auth));
+  app.use('/api', createDashboardRoutes(db, auth));
   app.use('/api', createReportRoutes(db, auth));
   app.use('/api', createCheckoutRoutes(db, auth, { checkout, cancelOrder }));
 

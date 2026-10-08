@@ -1,3 +1,4 @@
+import { up as upgradeDemoCatalogue } from '../db/017-usd-demo-catalogue.mjs';
 import { businessDate, addCalendarDays } from '../../shared/time.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,7 +41,32 @@ test(
         const [[counts]] = await pool.query(
           'SELECT (SELECT COUNT(*) FROM cities) AS cities, (SELECT COUNT(*) FROM stores) AS stores',
         );
-        assert.deepEqual(counts, { cities: 6, stores: 8 });
+        assert.deepEqual(counts, { cities: 8, stores: 8 });
+      });
+      await t.test('USD sample catalogue contains toys and upgrades old fixtures without resetting custom prices', async () => {
+        const [[oldCount]] = await pool.query("SELECT COUNT(*) AS count FROM products WHERE currency<>'USD' OR name IN ('Everyday T-shirt','Travel Bottle','Canvas Backpack')");
+        assert.equal(oldCount.count, 0);
+        const [[toys]] = await pool.query("SELECT COUNT(*) AS count FROM products p JOIN product_categories pc ON pc.product_id=p.id JOIN categories c ON c.id=pc.category_id WHERE c.name='Toys' AND p.is_active=1");
+        assert.equal(toys.count, 4);
+        const [[phone]] = await pool.query("SELECT price FROM variants WHERE sku='NOVA-X1-PRO-128-BLK'");
+        assert.equal(phone.price, '1299.00');
+        // Recreate the exact old demo state solely inside this disposable database.
+        await pool.query("UPDATE products SET name='Everyday T-shirt',currency='LKR' WHERE id=1");
+        await pool.query("UPDATE variants SET sku='TEE-NAVY-M',name='Navy / Medium',price=2500 WHERE id=1");
+        await pool.query("UPDATE orders SET currency='LKR',total=2500 WHERE id=3");
+        await pool.query("UPDATE order_items SET product_name='Everyday T-shirt',variant_name='White / Large',unit_price=2500 WHERE order_id=3");
+        await pool.query("UPDATE variants SET price=129900 WHERE sku='NOVA-X1-PRO-128-BLK'");
+        await pool.query("UPDATE variants SET price=777.77 WHERE sku='NOVA-X1-PRO-256-BLK'");
+        const conn = await pool.getConnection();
+        try { await upgradeDemoCatalogue(conn); await upgradeDemoCatalogue(conn); } finally { conn.release(); }
+        const [[product]] = await pool.query('SELECT name,currency FROM products WHERE id=1');
+        assert.deepEqual(product, { name:'Wireless Headphones', currency:'USD' });
+        const [[order]] = await pool.query('SELECT currency,total FROM orders WHERE id=3');
+        assert.deepEqual(order, {currency:'USD',total:'25.00'});
+        const [[item]] = await pool.query('SELECT product_name,unit_price FROM order_items WHERE order_id=3');
+        assert.deepEqual(item, {product_name:'Wireless Headphones',unit_price:'25.00'});
+        const [[custom]] = await pool.query("SELECT price FROM variants WHERE sku='NOVA-X1-PRO-256-BLK'");
+        assert.equal(custom.price, '777.77');
       });
       await t.test('an existing catalogue seed still receives missing locations', async () => {
         // All rows here belong exclusively to this disposable test database.
@@ -52,7 +78,7 @@ test(
         const [[counts]] = await pool.query(
           'SELECT (SELECT COUNT(*) FROM cities) AS cities, (SELECT COUNT(*) FROM stores) AS stores',
         );
-        assert.deepEqual(counts, { cities: 6, stores: 8 });
+        assert.deepEqual(counts, { cities: 8, stores: 8 });
         await pool.query("UPDATE cities SET is_main_city=0 WHERE name='Dallas'");
         await runSetup(pool, { seedProject: true });
         pool = mysql.createPool(config);
@@ -127,6 +153,63 @@ test(
         });
         return { status: response.status, body: await response.json() };
       }
+
+      await t.test('registration requires a phone, strong password and usable address, and saves both records', async () => {
+        const [[city]] = await pool.query('SELECT id FROM cities WHERE is_active=1 LIMIT 1');
+        const body = { firstName: 'New', lastName: 'Customer', email: 'new-registration@example.test', password: 'ValidPass123', phoneNumber: '5125550123', address: { recipient: 'New Customer', line1: '100 Test Lane', cityId: city.id, postalCode: '78701' } };
+        for (const invalid of [{ ...body, phoneNumber: '' }, { ...body, password: 'onlyletters' }, { ...body, address: undefined }]) assert.equal((await request('/auth/register', null, invalid)).status, 400);
+        const result = await request('/auth/register', null, body);
+        assert.equal(result.status, 201, JSON.stringify(result.body));
+        const [[row]] = await pool.execute('SELECT COUNT(*) AS count FROM addresses WHERE customer_id=? AND is_default=1', [result.body.data.id]);
+        assert.equal(row.count, 1);
+        assert.equal((await request('/auth/register', null, body)).status, 409);
+      });
+      await t.test('guest merge is atomic, replays once and rejects changed payloads', async () => {
+        const body = { requestKey: randomUUID(), items: [{ variantId: variant.id, quantity: 2 }] };
+        const initial = await request('/cart', other.id);
+        const first = await request('/cart/merge', other.id, body);
+        assert.equal(first.status, 200, JSON.stringify(first.body));
+        const replay = await request('/cart/merge', other.id, body);
+        assert.deepEqual(replay.body.data, first.body.data);
+        assert.equal(first.body.data.items.find(i=>i.variantId===variant.id).quantity, (initial.body.data.items.find(i=>i.variantId===variant.id)?.quantity || 0) + 2);
+        assert.equal((await request('/cart/merge', other.id, { ...body, items: [{ variantId: variant.id, quantity: 3 }] })).status, 409);
+        const failed = await request('/cart/merge', other.id, { requestKey: randomUUID(), items: [{ variantId: variant.id, quantity: 1 }, { variantId: 4000000000, quantity: 1 }] });
+        assert.equal(failed.status, 404);
+        assert.deepEqual((await request('/cart', other.id)).body.data, first.body.data);
+        await request('/cart', other.id, undefined, 'DELETE');
+      });
+      await t.test('simple products get a default variant; search, filters and dashboard use real data', async () => {
+        const [[cat]] = await pool.query('SELECT id FROM categories LIMIT 1');
+        const created = await request('/admin/products', admin.id, { sku: 'ALIGNMENT-TEST', name: 'Alignment gadget', description: 'uniquedescriptionmarker', categoryIds: [cat.id], defaultPrice: '12.50' });
+        assert.equal(created.status, 201, JSON.stringify(created.body));
+        const product = created.body.data;
+        assert.equal(product.variants.length, 1); assert.equal(Number(product.variants[0].isDefault), 1);
+        assert.equal(product.variants[0].stock, 0);
+        assert.equal((await request('/admin/products/'+product.id, admin.id, { isActive: true }, 'PATCH')).status, 200);
+        for (const q of ['ALIGNMENT-TEST', 'uniquedescriptionmarker']) {
+          const result = await request('/catalogue?q='+q+'&minPrice=12.00&maxPrice=13.00&availability=backorder');
+          assert.equal(result.status, 200); assert.equal(result.body.data.items.length, 1);
+        }
+        assert.equal((await request('/catalogue?q=ALIGNMENT-TEST&availability=in-stock')).body.data.total, 0);
+        assert.equal((await request('/catalogue?minPrice=13.00&maxPrice=12.00')).status, 400);
+        assert.equal((await request('/admin/dashboard', owner.id)).status, 403);
+        assert.equal((await request('/admin/dashboard', admin.id)).status, 200);
+        await request('/admin/products/'+product.id, admin.id, { isActive: false }, 'PATCH');
+      });
+      await t.test('warehouse staff can adjust inventory but cannot administer products or reports', async () => {
+        assert.equal((await request('/admin/customers/'+other.id+'/role', owner.id, { role:'warehouse' }, 'PATCH')).status, 403);
+        assert.equal((await request('/admin/customers/'+other.id+'/role', admin.id, { role:'warehouse' }, 'PATCH')).status, 200);
+        assert.equal((await request('/admin/inventory', other.id)).status, 200);
+        assert.equal((await request('/admin/products', other.id)).status, 403);
+        assert.equal((await request('/admin/dashboard', other.id)).status, 403);
+        const body = { requestKey: randomUUID(), quantityDelta: 1, reason: 'Warehouse test replenishment' };
+        const path = '/admin/variants/'+variant.id+'/stock-adjustments';
+        const first = await request(path, other.id, body);
+        assert.equal(first.status, 201, JSON.stringify(first.body));
+        assert.equal((await request(path, other.id, body)).body.data.id, first.body.data.id);
+        assert.equal((await request(path, other.id, { ...body, quantityDelta: 2 })).status, 409);
+        assert.equal((await request('/admin/customers/'+other.id+'/role', admin.id, { role:'customer' }, 'PATCH')).status, 200);
+      });
       await t.test(
         'owner reads coherent snapshots/payment/history; private records stay hidden',
         async () => {
@@ -138,7 +221,7 @@ test(
           assert.equal(detail.isLegacy, false);
           assert.equal(detail.payment.status, 'paid');
           assert.equal(detail.delivery.destinationSnapshot.storeId, store.id);
-          assert.match(detail.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/);
+          assert.equal(detail.delivery.estimatedDate, null);
           assert.equal(detail.history.at(-1).toStatus, 'confirmed');
           assert.equal('requestKey' in detail, false);
           const list = await request('/orders', owner.id);
@@ -328,7 +411,7 @@ test(
             assert.equal(detail.body.data.status, scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed');
             assert.equal(detail.body.data.payment.status, scenario.payment === 'card'
               ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
-            assert.equal(detail.body.data.delivery.estimatedDate, addCalendarDays(businessDate(detail.body.data.createdAt), (scenario.main ? 5 : 7) + (scenario.shortage ? 3 : 0)));
+            assert.equal(detail.body.data.delivery.estimatedDate, detail.body.data.fulfillment === 'pickup' ? null : addCalendarDays(businessDate(detail.body.data.createdAt), (scenario.main ? 5 : 7) + (scenario.shortage ? 3 : 0)));
             const [[movements]] = await pool.execute("SELECT COUNT(*) AS count FROM inventory_movements WHERE order_id=? AND movement_type='cancellation'", [outcome.orderId]);
             assert.equal(movements.count, scenario.cancel && !scenario.shortage ? 1 : 0);
           }

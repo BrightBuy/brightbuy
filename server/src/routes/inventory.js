@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ApiError, positiveId } from '../errors.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { requireInventoryStaff } from '../middleware/auth.js';
 import { applyStockChange } from '../services/inventory.js';
 
 //regex for uuid
@@ -10,7 +10,7 @@ export function createInventoryRoutes(db, requireAuthentication) {
     const router = Router();
 
     //check only admin is logging to the page
-    router.use(['/admin/inventory', '/admin/variants'], requireAuthentication, requireAdmin);
+    router.use(['/admin/inventory', '/admin/variants'], requireAuthentication, requireInventoryStaff);
 
     //view currunt inventory+
     router.get('/admin/inventory', async (req, res) => {

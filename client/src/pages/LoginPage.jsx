@@ -1,5 +1,6 @@
+import { guestCart } from '../utils/guest-cart.js';
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { returnPath } from '../utils/interactions.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 
@@ -17,7 +18,7 @@ export function LoginPage() {
     const form = new FormData(event.currentTarget);
     try {
       const user = await login(form.get('email'), form.get('password'));
-      navigate(returnPath(location.state?.from, user.role), { replace: true });
+      navigate(returnPath(user.role === 'customer' && guestCart().read().items.length ? '/cart' : location.state?.from, user.role), { replace: true });
     } catch (error) {
       setError(error.message);
     } finally {
@@ -51,7 +52,7 @@ export function LoginPage() {
         )}
         <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
-      <p>Demo accounts and setup instructions are in the project README.</p>
+      <p>New to BrightBuy? <Link to="/register" state={{ from: location.state?.from }}>Create an account</Link>.</p><p>Demo accounts and setup instructions are in the project README.</p>
     </section>
   );
 }

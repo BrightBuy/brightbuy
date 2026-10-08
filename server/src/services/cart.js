@@ -1,3 +1,4 @@
+import { inTransaction } from '../utils/transaction.js';
 import { ApiError } from '../errors.js';
 import { parseMoney, formatMoneyUnits, multiplyMoney, addMoney, MAX_ORDER_UNITS } from '../utils/money.js';
 
@@ -350,4 +351,42 @@ export async function readCartForCheckout(connection, customerId) {
     return { variantId: row.variantId, quantity: row.quantity };
   });
   return { version: cart.version, items };
+}
+
+// One customer lock covers the entire merge. A recorded key prevents duplicate additions.
+export async function mergeGuestCart(db, customerId, body) {
+  if (!body || typeof body.requestKey !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.requestKey) ||
+      !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 100) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Provide a request key and 1–100 cart items.');
+  }
+  const seen = new Set();
+  const items = body.items.map(item => {
+    if (!item || !Number.isSafeInteger(item.variantId) || item.variantId < 1 || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99 || seen.has(item.variantId)) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Cart items must have distinct variant IDs and quantities from 1 to 99.');
+    }
+    seen.add(item.variantId);
+    return { variantId: item.variantId, quantity: item.quantity };
+  }).sort((a, b) => a.variantId - b.variantId);
+  const payload = JSON.stringify(items);
+  return inTransaction(db, async connection => {
+    await connection.execute('SELECT id FROM customers WHERE id = ? FOR UPDATE', [customerId]);
+    const [prior] = await connection.execute('SELECT payload FROM guest_cart_merges WHERE customer_id = ? AND request_key = ?', [customerId, body.requestKey]);
+    if (prior.length) {
+      const stored = typeof prior[0].payload === 'string' ? JSON.parse(prior[0].payload) : prior[0].payload;
+      if (JSON.stringify(stored.map(({ variantId, quantity }) => ({ variantId, quantity })).sort((a, b) => a.variantId - b.variantId)) !== payload) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'This merge key was already used for different items.');
+      return readCart(connection, customerId);
+    }
+    // Reuse cart validation without allowing the inner operation to commit or release.
+    const nested = { execute: connection.execute.bind(connection), beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release() {} };
+    const executor = { getConnection: async () => nested };
+    for (const item of items) {
+      const cart = await readCart(connection, customerId);
+      const existing = cart.items.find(line => line.variantId === item.variantId);
+      const totalQuantity = (existing?.quantity || 0) + item.quantity;
+      if (totalQuantity > 99) throw new ApiError(409, 'CART_LIMIT_EXCEEDED', 'Merging would exceed 99 units for a variant. Adjust the cart before retrying.');
+      await putCartItem(executor, customerId, item.variantId, totalQuantity);
+    }
+    await connection.execute('INSERT INTO guest_cart_merges (customer_id, request_key, payload) VALUES (?, ?, ?)', [customerId, body.requestKey, payload]);
+    return readCart(connection, customerId);
+  });
 }

@@ -75,7 +75,7 @@ function createTestDb() {
   ];
 
   const products = [
-    { id: 10, name: 'Texas T-Shirt', is_active: 1, currency: 'USD' },
+    { id: 10, name: 'Texas Robot Toy', is_active: 1, currency: 'USD' },
     { id: 11, name: 'Legacy LKR Item', is_active: 0, currency: 'LKR' },
   ];
 

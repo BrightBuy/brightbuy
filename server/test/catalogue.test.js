@@ -74,7 +74,7 @@ const db = {
       }
       if (sql.includes('p.name LIKE ?')) {
         const qParam = params[paramIdx++]; // first '%term%'
-        paramIdx++; // second '%term%'
+        paramIdx += 3; // brand, description and SKU terms
         const rawTerm = qParam.slice(1, -1).toLowerCase();
         filtered = filtered.filter(
           (p) =>

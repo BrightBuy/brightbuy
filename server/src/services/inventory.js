@@ -130,6 +130,9 @@ export async function applyStockChange(connection, {
             );
         }
 
+        if (msg.includes('IDEMPOTENCY_CONFLICT')) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'This request key was used for a different stock adjustment.');
+        if (msg.includes('STOCK_OVERFLOW')) throw new ApiError(409, 'STOCK_OVERFLOW', 'Stock exceeds the supported maximum.');
+        if (msg.includes('VARIANT_NOT_FOUND')) throw new ApiError(404, 'NOT_FOUND', 'Variant not found.');
         if (msg.includes('INVALID_DELTA')) {
             throw new ApiError(
                 400,

@@ -98,7 +98,7 @@ export function OrderDetailPage() {
                           : pickup
                             ? 'Estimated ready date'
                             : 'Estimated delivery date'}
-                        : <strong>{calendarDate(order.delivery.estimatedDate)}</strong>
+                        : <strong>{pickup ? 'See pickup status; no delivery estimate' : calendarDate(order.delivery.estimatedDate)}</strong>
                       </p>
                       <p>
                         {pickup ? 'Collected date' : 'Delivered date'}:{' '}

@@ -1,3 +1,4 @@
+import { addGuestItem } from '../utils/guest-cart.js';
 import { ProductImage } from '../components/ProductImage.jsx';
 import React, { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -45,12 +46,7 @@ function ProductDetail({ product, user, navigate }) {
   const currentPrice = selected?.price ?? 0;
 
   async function handleAddToCart() {
-    if (!user) {
-      navigate('/login', { state: { from: `/products/${product.id}` } });
-      return;
-    }
-
-    if (user.role !== 'customer') {
+if (user && user.role !== 'customer') {
       setCartMessage('⚠️ Administrator accounts cannot place orders.');
       setTimeout(() => setCartMessage(''), 3500);
       return;
@@ -65,7 +61,7 @@ function ProductDetail({ product, user, navigate }) {
 
     try {
       // Save item directly to database cart
-      await addCartItem(api, selected.id, qty);
+      if (user) await addCartItem(api, selected.id, qty); else addGuestItem(product, selected, qty);
 
       // Dispatch decoupled event for any listening hooks
       window.dispatchEvent(
@@ -92,7 +88,7 @@ function ProductDetail({ product, user, navigate }) {
     <div className="product-page-container">
       {/* ── Breadcrumb Bar ── */}
       <nav className="detail-breadcrumbs" aria-label="Breadcrumb">
-        <Link to="/" className="breadcrumb-link">Shop</Link>
+        <Link to="/products" className="breadcrumb-link">Shop</Link>
         <span className="breadcrumb-sep">/</span>
         {product.categories?.[0] && (
           <>
@@ -179,9 +175,9 @@ function ProductDetail({ product, user, navigate }) {
                 <span className="specs-sku">{selected.sku}</span>
               </div>
 
-              {selected.attributes?.length > 0 && (
+              {selected.attributeValues?.length > 0 && (
                 <div className="specs-attributes-grid">
-                  {selected.attributes.map((a) => (
+                  {selected.attributeValues.map((a) => (
                     <div className="attribute-chip" key={a.attributeId}>
                       <span className="attr-name">{a.name}:</span>{' '}
                       <span className="attr-val">{a.value}</span>
@@ -249,7 +245,7 @@ function ProductDetail({ product, user, navigate }) {
               onClick={handleAddToCart}
               disabled={isAdding || !selected || product.currency !== 'USD'}
             >
-              {product.currency !== 'USD' ? 'Not available for checkout' : isAdding ? 'Adding to cart…' : user ? 'Add to bag →' : 'Sign In to Add to Cart'}
+              {product.currency !== 'USD' ? 'Not available for checkout' : isAdding ? 'Adding to cart…' : 'Add to bag →'}
             </button>
           </div>
 

@@ -65,7 +65,7 @@ export async function presentOrder(connection, id) {
       ? record.status === (cancelled ? 'refunded' : 'paid')
       : record.method === 'cod' && record.status === (cancelled ? 'void' : terminal ? 'paid' : 'pending');
     if (!validPayment || (terminal ? !destination.actualDate : destination.actualDate !== null) ||
-        !destination.estimatedDate || !jsonValue(destination.destinationSnapshot) ||
+        (order.fulfillment === 'delivery' && !destination.estimatedDate) || !jsonValue(destination.destinationSnapshot) ||
         events.at(-1).toStatus !== order.status) throw incomplete();
     payment = { ...payments[0], paidAt: iso(payments[0].paidAt),
       refundedAt: iso(payments[0].refundedAt) };

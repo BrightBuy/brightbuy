@@ -225,7 +225,7 @@ export async function fetchPublicProduct(connection, productId) {
  */
 export async function fetchPublicCatalogue(
   connection,
-  { q, categoryId, page = 1, pageSize = 12 } = {},
+  { q, categoryId, minPrice, maxPrice, availability, page = 1, pageSize = 12 } = {},
 ) {
   const conditions = ['p.is_active = 1'];
   const params = [];
@@ -238,10 +238,18 @@ export async function fetchPublicCatalogue(
   }
 
   if (q) {
-    conditions.push('(p.name LIKE ? OR p.brand LIKE ?)');
+    conditions.push('(p.name LIKE ? OR p.brand LIKE ? OR p.description LIKE ? OR p.sku LIKE ?)');
     const searchTerm = `%${q}%`;
-    params.push(searchTerm, searchTerm);
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
   }
+
+  // Price and stock conditions must describe the same active variant.
+  const variantConditions = ['v.product_id = p.id', 'v.is_active = 1'];
+  if (minPrice !== undefined) { variantConditions.push('v.price >= ?'); params.push(minPrice); }
+  if (maxPrice !== undefined) { variantConditions.push('v.price <= ?'); params.push(maxPrice); }
+  if (availability === 'in-stock') variantConditions.push('v.stock > 0');
+  if (availability === 'backorder') variantConditions.push('v.stock = 0');
+  conditions.push('EXISTS (SELECT 1 FROM variants v WHERE ' + variantConditions.join(' AND ') + ')');
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -265,7 +273,16 @@ export async function fetchPublicCatalogue(
   const items = [];
   for (const p of pagedProducts || []) {
     const full = await fetchPublicProduct(connection, p.id);
-    if (full) items.push(full);
+    if (full) {
+      // Show a variant that actually satisfies the selected price/stock filters.
+      const matching = full.variants.filter(v =>
+        (minPrice === undefined || parseMoney(v.price) >= parseMoney(minPrice)) &&
+        (maxPrice === undefined || parseMoney(v.price) <= parseMoney(maxPrice)) &&
+        (availability !== 'in-stock' || v.stock > 0) &&
+        (availability !== 'backorder' || v.stock === 0));
+      full.defaultVariant = matching.find(v => v.isDefault === 1) || matching[0] || full.defaultVariant;
+      items.push(full);
+    }
   }
 
   const totalPages = Math.ceil(total / pageSize) || 1;

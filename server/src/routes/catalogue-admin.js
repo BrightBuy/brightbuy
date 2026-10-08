@@ -315,7 +315,7 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
 
   // POST /admin/products
   router.post('/admin/products', requireAuthentication, requireAdmin, async (req, res) => {
-    validateAllowedKeys(req.body, ['sku', 'name', 'description', 'brand', 'categoryIds']);
+    validateAllowedKeys(req.body, ['sku', 'name', 'description', 'brand', 'categoryIds', 'defaultPrice']);
 
     const sku = typeof req.body.sku === 'string' ? req.body.sku.trim().toUpperCase() : '';
     if (!sku || sku.length > 60) {
@@ -381,7 +381,8 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
       }
     }
 
-    const [insertResult] = await db.execute(
+    const fullProduct = await withTransaction(db, async connection => {
+    const [insertResult] = await connection.execute(
       `INSERT INTO products (sku, name, description, brand, currency, is_active, is_legacy)
        VALUES (?, ?, ?, ?, 'USD', 0, 0)`,
       [sku, name, description, brand],
@@ -389,13 +390,19 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
     const productId = insertResult.insertId;
 
     for (const cid of cleanCategoryIds) {
-      await db.execute('INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)', [
+      await connection.execute('INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)', [
         productId,
         cid,
       ]);
     }
 
-    const fullProduct = await fetchFullProduct(db, productId);
+    if (req.body.defaultPrice !== undefined) {
+      const price = formatMoneyUnits(parseMoney(req.body.defaultPrice));
+      await connection.execute("INSERT INTO variants (product_id, sku, name, price, stock, is_active, is_default, combination_key) VALUES (?, ?, 'Default', ?, 0, 1, 1, '')", [productId, 'BB-DEFAULT-' + productId, price]);
+    }
+    const fullProduct = await fetchFullProduct(connection, productId);
+    return fullProduct;
+    });
     res.status(201).json({ data: fullProduct });
   });
 

@@ -41,6 +41,7 @@ services:
     environment:
       <<: *db-env
       SEED_DEMO: ${SEED_DEMO:-true}
+      SEED_PROJECT: ${SEED_PROJECT:-true}
     depends_on:
       db: { condition: service_healthy }
   api:
