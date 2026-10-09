@@ -124,7 +124,7 @@ export function CartPage() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div className="cart-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1>Shopping Cart</h1>
         {!isEmpty && (
           <button onClick={clearCart} disabled={pendingVariant !== null} className="button secondary" style={{ color: '#dc2626' }}>
@@ -170,7 +170,7 @@ export function CartPage() {
                     borderLeft: !item.available ? '4px solid #ef4444' : item.shortage ? '4px solid #f59e0b' : '1px solid #e2e8f0',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div className="cart-item-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{item.productName}</h3>
                       <p style={{ margin: '0.25rem 0', color: '#64748b', fontSize: '0.9rem' }}>
@@ -197,8 +197,8 @@ export function CartPage() {
                     </p>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="cart-item-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
+                    <div className="cart-quantity" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <label style={{ fontSize: '0.9rem', margin: 0 }}>Quantity:</label>
                       <button
                         className="button secondary"

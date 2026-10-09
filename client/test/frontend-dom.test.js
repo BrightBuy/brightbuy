@@ -324,3 +324,61 @@ test('report results offer CSV and print exports', async()=>{
   assert.match(document.body.textContent,/Download CSV/);assert.match(document.body.textContent,/Print \/ save PDF/);
   let printed=false;window.print=()=>{printed=true;};await click('Print / save PDF');assert.equal(printed,true);
 });
+
+
+test('colour swatches select real variants and preserve matching storage',async()=>{
+ const {VariantSelector}=await import('../src/components/VariantSelector.jsx');
+ const variants=[['Black','128 GB'],['Black','256 GB'],['White','256 GB']].map(([color,storage],i)=>({id:i+1,name:color+' / '+storage,attributeValues:[{attributeId:1,name:'Color',value:color},{attributeId:2,name:'Storage',value:storage}]}));
+ function Preview(){const[selected,setSelected]=React.useState(variants[0]);return h(VariantSelector,{variants,selected,onChange:setSelected});}
+ root=createRoot(document.getElementById('root'));await React.act(async()=>root.render(h(Preview)));
+ const swatch=color=>document.querySelector('[aria-label="Colour: '+color+'"]');
+ await React.act(async()=>swatch('White').click());
+ assert.ok(document.body.textContent.includes('Selected: White / 256 GB'));
+ assert.equal(swatch('White').getAttribute('aria-pressed'),'true');
+ await React.act(async()=>swatch('Black').click());
+ assert.ok(document.body.textContent.includes('Selected: Black / 256 GB'));
+ await click('128 GB');assert.ok(document.body.textContent.includes('Selected: Black / 128 GB'));
+});
+
+test('admin chooser previews defaults, prefers uploads and restores defaults on removal',async()=>{
+ const {ProductImageEditor}=await import('../src/components/ProductImageEditor.jsx');
+ let preview=null;
+ const product={sku:'SONIX-WH-1000'},variant={id:17,name:'White'};
+ function Editor(){return h(ProductImageEditor,{variantId:17,variantName:'White',variant,product});}
+ const handler=async(path,options)=>{assert.equal(path,'/admin/variants/17/image');if(options.method==='DELETE')preview=null;return {preview};};
+ await mount(Editor,handler,'admin');
+ assert.ok(document.querySelector('.variant-image-preview img').src.endsWith('sonix-wh-1000-white.webp'));
+ assert.match(document.body.textContent,/Default catalogue image/);
+ await React.act(async()=>root.unmount());root=null;
+ preview='data:image/png;base64,aGVsbG8=';
+ await mount(Editor,handler,'admin');
+ assert.equal(document.querySelector('.variant-image-preview img').src,preview);
+ await click('Remove upload');
+ assert.ok(document.querySelector('.variant-image-preview img').src.endsWith('sonix-wh-1000-white.webp'));
+});
+
+test('catalogue pagination uses complete grid rows and keeps all products reachable', async () => {
+  const { ProductsPage } = await import('../src/pages/ProductsPage.jsx');
+  const requests = [];
+  const products = Array.from({length: 13}, (_, i) => ({id:i+1,sku:'DEMO-'+i,name:'Product '+(i+1),currency:'USD',defaultVariant:{id:i+1,name:'Standard',price:'10.00',stock:1}}));
+  document.documentElement.scrollIntoView = () => {};
+  const original = dom.window.HTMLElement.prototype.scrollIntoView;
+  dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+  try {
+    await mount(ProductsPage, async path => {
+      if(path === '/categories') return [];
+      const query = new URL(path, 'http://test').searchParams;
+      const page = Number(query.get('page')), size = Number(query.get('pageSize'));
+      requests.push({page,size});
+      return {items:products.slice((page-1)*size,page*size),total:products.length};
+    });
+    assert.equal(document.querySelectorAll('.collection-card').length,12);
+    assert.equal(requests.at(-1).size,12);
+    await click('Next');
+    assert.equal(document.querySelectorAll('.collection-card').length,1);
+    assert.match(document.querySelector('.collection-grid').textContent,/Product 13/);
+    assert.match(document.querySelector('.pagination').textContent,/Page 2 of 2/);
+    await click('Previous');
+    assert.equal(document.querySelectorAll('.collection-card').length,12);
+  } finally {dom.window.HTMLElement.prototype.scrollIntoView = original;}
+});

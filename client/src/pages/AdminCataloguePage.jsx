@@ -407,7 +407,7 @@ function ProductEditor({ product, onSaved, onCancel }) {
               {/* Stock is read-only — M4 owns stock adjustments */}
               <small className="stock-note"> · Stock: {v.stock ?? 0} (adjust in Inventory)</small>
             </div>
-            <ProductImageEditor variantId={v.id} variantName={v.name} />
+            <ProductImageEditor key={v.id} variantId={v.id} variantName={v.name} product={localProduct} variant={v} />
             <div className="variant-actions">
               {!v.isDefault && v.isActive && (
                 <button className="secondary" disabled={busy} onClick={() => handleSetDefault(v.id)}>

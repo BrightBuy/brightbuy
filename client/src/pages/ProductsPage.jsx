@@ -7,7 +7,7 @@ import { api } from '../api.js';
 import { formatMoney } from '../utils/format.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 
-const PAGE_SIZE = 18;
+const PAGE_SIZE = 12;
 
 export function ProductsPage() {
   const { user } = useAuth();
@@ -84,7 +84,7 @@ export function ProductsPage() {
   function goToPage(newPage) {
     setPage(newPage);
     setCommitted((prev) => ({ ...prev, page: newPage }));
-    window.scrollTo({ top: 300, behavior: 'smooth' });
+    document.getElementById('catalogue')?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }
 
   async function handleQuickAddToCart(e, product) {
