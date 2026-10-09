@@ -42,9 +42,21 @@ test(
         "SELECT id FROM customers WHERE role='customer' ORDER BY id",
       );
       const [[admin]] = await pool.query("SELECT id FROM customers WHERE role='admin' LIMIT 1");
-      const [products] = await pool.query(
-        'SELECT id FROM products WHERE is_legacy=0 ORDER BY id LIMIT 2',
-      );
+      // Dedicated fixtures do not depend on catalogue seed ordering.
+      const products = [];
+      for (const [sku, name, prices] of [
+        ['REPORT-SPEAKER', 'Report Speaker', ['40.00', '40.00']],
+        ['REPORT-TOY', 'Report Toy', ['20.00']],
+      ]) {
+        const [product] = await pool.execute(
+          "INSERT INTO products(sku,name,description,currency,is_active,is_legacy) VALUES (?,?,'Report integration fixture','USD',1,0)", [sku,name]);
+        products.push({id:product.insertId});
+        for (const [index,price] of prices.entries()) {
+          await pool.execute(
+            'INSERT INTO variants(product_id,sku,name,price,stock,is_active,is_default,combination_key) VALUES (?,?,?,?,0,1,?,?)',
+            [product.insertId,sku+'-'+index,'Variant '+(index+1),price,index===0?1:0,'report-'+index]);
+        }
+      }
       const [speakerVariants] = await pool.query(
         'SELECT id FROM variants WHERE product_id=? ORDER BY id LIMIT 2',
         [products[0].id],

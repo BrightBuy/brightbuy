@@ -361,7 +361,11 @@ test(
         const [[remaining]] = await pool.execute('SELECT stock FROM variants WHERE id=?', [variant.id]);
         assert.equal(remaining.stock, 0);
       });
-      await t.test('opt-in scenarios use real services and reruns preserve all effects', async () => {
+      await t.test('opt-in scenarios skip cities without active pickup stores and reruns preserve all effects', async () => {
+        const [[firstMainCity]] = await pool.query('SELECT id FROM cities WHERE is_active=1 AND is_main_city=1 ORDER BY id LIMIT 1');
+        await pool.execute('UPDATE stores SET is_active=0 WHERE city_id=?', [firstMainCity.id]);
+        const [[alternative]] = await pool.query('SELECT COUNT(*) AS count FROM stores s JOIN cities c ON c.id=s.city_id WHERE s.is_active=1 AND c.is_active=1 AND c.is_main_city=1');
+        assert.ok(alternative.count > 0, 'Retain another eligible pickup city.');
         // Crash after the durable payload is saved, before checkout commits.
         let injected = false;
         const interruptedPool = new Proxy(pool, {
