@@ -50,7 +50,7 @@ export function MainLayout({ admin = false }) {
         <div className="footer-identity"><Link className="brand" to="/" aria-label="BrightBuy home"><Brand /></Link><p>Good finds. Everyday possibilities.</p><p className="footer-description">Electronics, gadgets and toys, with delivery across supported Texas cities and convenient store pickup.</p></div>
         <div className="footer-column"><h2>Explore</h2><nav aria-label="Explore"><Link to="/products">All products</Link><Link to="/about">About BrightBuy</Link><Link to="/contact">Contact us</Link><Link to="/cart">Shopping bag</Link><Link to="/account/orders">Track your orders</Link></nav></div>
         <div className="footer-column"><h2>Your BrightBuy</h2><nav aria-label="Your BrightBuy"><Link to="/account/profile">Your account</Link><Link to="/account/addresses">Saved addresses</Link>{!user && <Link to="/register">Create an account</Link>}{user?.role === 'admin' && <Link to="/admin">Administration</Link>}</nav></div>
-        <div className="footer-column"><h2>Made for your day</h2><p>Choose delivery or pickup at checkout. Follow your order’s progress from your account.</p></div>
+        <div className="footer-column footer-service"><h2>Made for your day</h2><p>Choose delivery or pickup at checkout. Follow your order’s progress from your account.</p></div>
         <div className="footer-bottom"><small>© {new Date().getFullYear()} BrightBuy. All rights reserved.</small><a href="#main-content">Back to top ↑</a></div>
       </footer>
     </>

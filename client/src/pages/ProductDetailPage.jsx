@@ -8,11 +8,9 @@ import { formatMoney } from '../utils/format.js';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { addCartItem, quantity } from '../utils/interactions.js';
 import { api } from '../api.js';
-import { getProductImage } from '../utils/productImages.js';
+import { VariantSelector } from '../components/VariantSelector.jsx';
 
-// Shows modern AliExpress-style full product detail:
-// high-res product photo, price with discount tag, star rating,
-// interactive variant selector, attributes, stock status, quantity picker and cart action.
+// Product details with colour and configuration selection.
 export function ProductDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -41,7 +39,6 @@ function ProductDetail({ product, user, navigate }) {
   const adding = useRef(false);
 
   const selected = product.variants?.find((v) => v.id === selectedId) ?? defaultVariant;
-  const imgUrl = getProductImage(product);
 
   const currentPrice = selected?.price ?? 0;
 
@@ -140,32 +137,7 @@ if (user && user.role !== 'customer') {
             <p className="detail-description-text">{product.description}</p>
           </div>
 
-          {/* Variant Selector */}
-          {product.variants?.length > 1 && (
-            <div className="detail-variant-box">
-              <label htmlFor="variant-select" className="meta-label">
-                <strong>Choose your model</strong>
-              </label>
-              <div className="variant-pills-row">
-                {product.variants.map((v) => {
-                  const isActive = v.id === selected?.id;
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      className={`variant-option-pill ${isActive ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedId(v.id);
-                        setCartMessage('');
-                      }}
-                    >
-                      {v.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {product.variants?.length > 1 && <VariantSelector variants={product.variants} selected={selected} onChange={variant=>{setSelectedId(variant.id);setCartMessage('');}} />}
 
           {/* Selected Variant Attributes & SKU */}
           {selected && (
