@@ -179,7 +179,7 @@ function ProductForm({ onSaved, onCancel }) {
   const { busy, error, call, setError } = useApi();
   const cats = useCategories(setError);
   const [form, setForm] = useState({
-    sku: '', name: '', description: '', brand: '', categoryIds: [],
+    sku: '', name: '', description: '', brand: '', categoryIds: [], defaultPrice: '', createDefault: true,
   });
 
   function toggle(id) {
@@ -199,13 +199,14 @@ function ProductForm({ onSaved, onCancel }) {
       description: form.description.trim(),
       brand: form.brand.trim(),
       categoryIds: form.categoryIds,
+      ...(form.createDefault ? { defaultPrice: form.defaultPrice } : {}),
     });
     if (result) onSaved(result);
   }
 
   return (
     <form onSubmit={handleSubmit} className="admin-form">
-      <h2>New Product Draft</h2>
+      <h2>New Product Draft</h2><label className="checkbox-label"><input type="checkbox" checked={form.createDefault} onChange={e=>setForm({...form,createDefault:e.target.checked})}/>Create a default variant (no options)</label>{form.createDefault && <label>Default variant price (USD)<input required inputMode="decimal" pattern="(0|[1-9][0-9]*)[.][0-9]{2}" placeholder="19.99" value={form.defaultPrice} onChange={e=>setForm({...form,defaultPrice:e.target.value})}/></label>}<p>Stock starts at zero. Replenish through Inventory. For multiple options, create variants in the product editor before activation.</p>
       {error && <p className="form-error">{error}</p>}
       <label>
         SKU <input required value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />

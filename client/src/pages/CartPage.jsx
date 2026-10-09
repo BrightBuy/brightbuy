@@ -1,3 +1,4 @@
+import { guestCart } from '../utils/guest-cart.js';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
@@ -17,7 +18,8 @@ export function CartPage() {
     setLoading(true);
     if (clearError) setError('');
     try {
-      const result = await api('/cart');
+      if (user) await guestCart().merge(api, user.id);
+      const result = user ? await api('/cart') : await guestCart().load(api);
       setCart(result);
     } catch (err) {
       setError(err.message || 'Failed to load cart.');
@@ -26,10 +28,10 @@ export function CartPage() {
       setPendingVariant(null);
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (user?.role === 'customer') {
+    if (!user || user.role === 'customer') {
       loadCart();
     } else {
       setLoading(false);
@@ -42,6 +44,7 @@ export function CartPage() {
     setPendingVariant(variantId);
     setError('');
     try {
+      if (!user) { const line = cart.items.find(i => i.variantId === variantId); guestCart().set({ id: line.productId }, { id: variantId }, newQuantity); await loadCart(); return; }
       const updated = await api(`/cart/items/${variantId}`, {
         method: 'PUT',
         body: JSON.stringify({ quantity: newQuantity }),
@@ -62,6 +65,7 @@ export function CartPage() {
     setPendingVariant(variantId);
     setError('');
     try {
+      if (!user) { const line = cart.items.find(i => i.variantId === variantId); guestCart().set({ id: line.productId }, { id: variantId }, 0); await loadCart(); return; }
       const updated = await api(`/cart/items/${variantId}`, {
         method: 'DELETE',
       });
@@ -82,6 +86,7 @@ export function CartPage() {
     setPendingVariant('all');
     setLoading(true);
     try {
+      if (!user) { guestCart().clear(); await loadCart(); return; }
       const updated = await api('/cart', { method: 'DELETE' });
       setCart(updated);
     } catch (err) {
@@ -107,7 +112,10 @@ export function CartPage() {
   }
 
   if (loading) return <p>Loading your cart…</p>;
-  if (error && !cart) return <><p className="error" role="alert">{error}</p><button onClick={() => loadCart()}>Retry</button></>;
+  if (error && !cart) {
+    let guest; try { guest = guestCart().read(); } catch { guest = { items: [] }; }
+    return <section className="card"><p className="error" role="alert">{error}</p><button onClick={() => loadCart()}>Retry</button>{guest.items.length > 0 && <><h2>Guest cart awaiting transfer</h2><p>{guest.pending ? 'The result is uncertain. Retry with the same account before editing.' : 'You can remove a conflicting guest item and retry. Your account cart has been preserved.'}</p>{guest.items.map(item => <p key={item.variantId}>Product #{item.productId}, variant #{item.variantId} × {item.quantity} <button disabled={Boolean(guest.pending)} onClick={() => { guestCart().set({id:item.productId}, {id:item.variantId}, 0); loadCart(); }}>Remove guest item</button></p>)}</>}</section>;
+  }
 
   const items = cart?.items || [];
   const isEmpty = items.length === 0;
@@ -233,11 +241,11 @@ export function CartPage() {
                 <strong>${cart?.total} USD</strong>
               </div>
               <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.5rem 0' }}>
-                Cart Version: {cart?.version}
+                {user ? 'Your cart is saved to your account.' : 'Guest cart is saved in this browser tab. Sign in to check out.'}
               </p>
 
               <button
-                onClick={() => { if (!mutation.current) navigate('/checkout'); }}
+                onClick={() => { if (!mutation.current) navigate(user ? '/checkout' : '/login', { state: { from: '/cart' } }); }}
                 className="button"
                 disabled={hasUnavailableItems || pendingVariant !== null}
                 style={{

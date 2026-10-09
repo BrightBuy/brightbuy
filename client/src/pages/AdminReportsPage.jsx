@@ -1,5 +1,6 @@
+import { toCsv } from '../utils/csv.js';
 import { businessDate } from '../../../shared/time.js';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../hooks/useData.js';
 import { DataState } from '../components/DataState.jsx';
@@ -25,8 +26,8 @@ const reports = [
   ],
   [
     'upcoming-deliveries',
-    'Upcoming deliveries and pickups',
-    'Uses the original stored estimate for unfinished orders, including backorders. Past ranges can show overdue orders. An estimate does not guarantee stock availability.',
+    'Upcoming delivery estimates',
+    'Uses stored estimates for unfinished orders, including backorders. New pickup orders have no delivery estimate and are not included. Past ranges can show overdue orders. An estimate does not guarantee stock availability.',
   ],
   [
     'customer-orders',
@@ -39,9 +40,15 @@ const money = (value) => {
   return `USD ${BigInt(whole).toLocaleString('en-US')}.${cents}`;
 };
 function Table({ headers, rows }) {
+  const table = useRef(null);
+  function download() {
+    const values = [...table.current.querySelectorAll('tr')].map(row => [...row.querySelectorAll('th,td')].map(cell => cell.textContent));
+    const url = URL.createObjectURL(new Blob([toCsv(values)], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'brightbuy-report.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   return rows.length ? (
-    <div className="table-wrap">
-      <table>
+    <div className="table-wrap"><div className="report-export"><button className="secondary" onClick={download}>Download CSV</button><button className="secondary" onClick={() => window.print()}>Print / save PDF</button></div>
+      <table ref={table}>
         <thead>
           <tr>
             {headers.map((label) => (

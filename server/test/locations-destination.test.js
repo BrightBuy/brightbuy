@@ -190,14 +190,15 @@ test(
           await connection.beginTransaction();
           fixtures = await seedLocations(connection);
           await connection.commit();
-          assert.equal(fixtures.cities.length, 6);
+          assert.equal(fixtures.cities.length, 8);
           assert.equal(fixtures.stores.length, 8);
-          assert.equal((await listCities(connection)).length, 5);
-          assert.equal((await listStores(connection)).length, 6);
+          assert.equal((await listCities(connection)).length, 8);
+          assert.equal((await listStores(connection)).length, 7);
         },
       );
       const dallas = fixtures.cities.find((city) => city.name === 'Dallas');
-      const inactiveCity = fixtures.cities.find((city) => !city.isActive);
+      const inactiveCity = fixtures.cities.find((city) => city.name === 'El Paso');
+      await connection.execute('UPDATE cities SET is_active=0 WHERE id=?', [inactiveCity.id]);
       const pickup = fixtures.stores.find((store) => store.name === 'Demo Dallas Central');
       const inactiveStore = fixtures.stores.find((store) => !store.isActive);
       const [inserted] = await connection.execute(
@@ -285,7 +286,7 @@ test(
         await connection.beginTransaction();
         const repeated = await seedLocations(connection);
         await connection.commit();
-        assert.equal(repeated.cities.length, 6);
+        assert.equal(repeated.cities.length, 8);
         assert.equal(repeated.stores.length, 8);
         const city = repeated.cities.find((item) => item.id === dallas.id);
         const store = repeated.stores.find((item) => item.id === pickup.id);

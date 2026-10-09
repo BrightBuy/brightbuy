@@ -2,6 +2,8 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../errors.js';
 import { hashPassword, verifyPassword } from '../password.js';
+import { validateAddressInput } from '../services/addresses.js';
+import { inTransaction } from '../utils/transaction.js';
 import { TOKEN_OPTIONS } from '../middleware/auth.js';
 
 export function createAuthRoutes(db, secret, requireAuthentication) {
@@ -36,17 +38,16 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
       throw new ApiError(400, 'VALIDATION_ERROR', 'Valid email address is required (maximum 254 characters).');
     }
 
-    if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'Password must be between 8 and 128 characters.');
+    if (typeof password !== 'string' || password.length < 8 || password.length > 128 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Password must be 8–128 characters and include a letter and a number.');
     }
 
-    let phone = null;
-    if (phoneNumber !== undefined && phoneNumber !== null) {
-      if (typeof phoneNumber !== 'string' || phoneNumber.length > 30) {
-        throw new ApiError(400, 'VALIDATION_ERROR', 'Phone number must be a string (maximum 30 characters).');
-      }
-      phone = phoneNumber.trim() || null;
+    if (typeof phoneNumber !== 'string' || !/^[+()\d .-]{7,30}$/.test(phoneNumber.trim()) || phoneNumber.replace(/\D/g, '').length < 7) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'A valid phone number is required (7–30 characters).');
     }
+    const phone = phoneNumber.trim();
+    // Validate before hashing; recheck under the transaction before saving.
+    await validateAddressInput(db, req.body.address);
 
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -63,20 +64,27 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
     let registeredAt = new Date().toISOString();
 
     try {
-      const [result] = await db.execute(
+      await inTransaction(db, async (connection) => {
+      const address = await validateAddressInput(connection, req.body.address);
+      const [result] = await connection.execute(
         `INSERT INTO customers (first_name, last_name, name, email, password_hash, phone_number, role)
          VALUES (?, ?, ?, ?, ?, ?, 'customer')`,
         [firstName.trim(), lastName.trim(), combinedName, normalizedEmail, passwordHash, phone],
       );
       insertId = result.insertId;
 
-      const [freshRow] = await db.execute(
+      await connection.execute(
+        'INSERT INTO addresses (customer_id, recipient, line1, line2, line3, city, city_id, postal_code, country, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)',
+        [insertId, address.recipient, address.line1, address.line2, address.line3, address.cityName, address.cityId, address.postalCode, address.country],
+      );
+      const [freshRow] = await connection.execute(
         'SELECT registered_at FROM customers WHERE id = ?',
         [insertId],
       );
       if (freshRow.length && freshRow[0].registered_at) {
         registeredAt = new Date(freshRow[0].registered_at).toISOString();
       }
+      });
     } catch (err) {
       if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
         throw new ApiError(409, 'EMAIL_EXISTS', 'An account with this email address already exists.');

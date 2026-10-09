@@ -4,11 +4,9 @@
  */
 
 const PRODUCT_IMAGES = {
-  // Everyday Essentials
-  'Everyday T-shirt': 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
-  'Travel Bottle': 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80',
-  'Canvas Backpack': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80',
-
+  'Wireless Headphones': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
+  'Bluetooth Speaker': 'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=600&q=80',
+  'Robot Building Kit': '/images/toy-blocks.svg',
   // Smartphones
   'Nova X1 Pro': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=600&q=80',
   'Nova A5 Lite': 'https://images.unsplash.com/photo-1567581935884-3349723552ca?auto=format&fit=crop&w=600&q=80',
@@ -37,7 +35,9 @@ const PRODUCT_IMAGES = {
   'Fast Charge 65W': 'https://images.unsplash.com/photo-1622445262464-84b1456045b6?auto=format&fit=crop&w=600&q=80',
 };
 
+const DEFAULT_TOY_IMAGE = '/images/toy-blocks.svg';
 const CATEGORY_FALLBACKS = {
+  Toys: '/images/toy-blocks.svg',
   Smartphones: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=600&q=80',
   Laptops: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=600&q=80',
   Headphones: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80',
@@ -48,7 +48,6 @@ const CATEGORY_FALLBACKS = {
   'Smart Home': 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=600&q=80',
   Wearables: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80',
   Accessories: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=600&q=80',
-  'Everyday Essentials': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80',
 };
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80';
@@ -61,17 +60,16 @@ export function getProductImage(product) {
     return PRODUCT_IMAGES[product.name];
   }
 
+  // Prefer the assigned category over ambiguous brand/name keywords.
+  for (const category of product.categories || []) {
+    const name = typeof category === 'string' ? category : category.name;
+    if (CATEGORY_FALLBACKS[name]) return CATEGORY_FALLBACKS[name];
+  }
+
   // Name keyword matching
   const lowerName = (product.name || '').toLowerCase();
-  if (lowerName.includes('shirt') || lowerName.includes('wear')) {
-    return 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80';
-  }
-  if (lowerName.includes('bottle')) {
-    return 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80';
-  }
-  if (lowerName.includes('backpack') || lowerName.includes('bag')) {
-    return 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80';
-  }
+  if (/robot|building kit|toy|blocks|puzzle/.test(lowerName)) return DEFAULT_TOY_IMAGE;
+  if (/headphone|earphone|earbud/.test(lowerName)) return CATEGORY_FALLBACKS.Headphones;
   if (lowerName.includes('phone') || lowerName.includes('pixel') || lowerName.includes('orbit') || lowerName.includes('swift z') || lowerName.includes('nova')) {
     return 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?auto=format&fit=crop&w=600&q=80';
   }

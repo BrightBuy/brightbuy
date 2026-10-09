@@ -1,0 +1,17 @@
+services:
+  backup:
+    image: mysql:8.4
+    restart: unless-stopped
+    entrypoint: ['/bin/bash', '/ops/backup.sh']
+    environment:
+      DB_HOST: db
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE}
+      MYSQL_PWD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./ops/backup.sh:/ops/backup.sh:ro
+      - database_backups:/backups
+    depends_on:
+      db: { condition: service_healthy }
+      setup: { condition: service_completed_successfully }
+volumes:
+  database_backups:

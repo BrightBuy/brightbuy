@@ -5,16 +5,16 @@ import { reconcileLegacyCatalogue } from '../src/database/reconcile.js';
 function createMockDb() {
   const categories = [];
   const products = [
-    { id: 1, name: 'Everyday T-shirt', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
-    { id: 2, name: 'Travel Bottle', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
-    { id: 3, name: 'Canvas Backpack', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
+    { id: 1, name: 'Wireless Headphones', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
+    { id: 2, name: 'Bluetooth Speaker', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
+    { id: 3, name: 'Robot Building Kit', sku: null, is_legacy: 0, currency: 'USD', is_active: 1 },
   ];
   const variants = [
-    { id: 1, product_id: 1, sku: 'TEE-NAVY-M', is_active: 1, is_default: 0, combination_key: null },
+    { id: 1, product_id: 1, sku: 'DEMO-HEADPHONES-NAVY', is_active: 1, is_default: 0, combination_key: null },
     {
       id: 2,
       product_id: 1,
-      sku: 'TEE-WHITE-L',
+      sku: 'DEMO-HEADPHONES-WHITE',
       is_active: 1,
       is_default: 0,
       combination_key: null,
@@ -22,7 +22,7 @@ function createMockDb() {
     {
       id: 3,
       product_id: 2,
-      sku: 'BOTTLE-GREEN',
+      sku: 'DEMO-SPEAKER-GREEN',
       is_active: 1,
       is_default: 0,
       combination_key: null,
@@ -30,12 +30,12 @@ function createMockDb() {
     {
       id: 4,
       product_id: 2,
-      sku: 'BOTTLE-BLACK',
+      sku: 'DEMO-SPEAKER-BLACK',
       is_active: 1,
       is_default: 0,
       combination_key: null,
     },
-    { id: 5, product_id: 3, sku: 'BAG-SAND', is_active: 1, is_default: 0, combination_key: null },
+    { id: 5, product_id: 3, sku: 'DEMO-ROBOT-STARTER', is_active: 1, is_default: 0, combination_key: null },
   ];
   const productCategories = [];
 
@@ -43,7 +43,7 @@ function createMockDb() {
     async query(sql) {
       if (sql.includes('INSERT INTO categories') || sql.includes('INSERT IGNORE INTO categories')) {
         if (!categories.some((c) => c.id === 1)) {
-          categories.push({ id: 1, name: 'Everyday Essentials' });
+          categories.push({ id: 1, name: 'Demo Electronics & Toys' });
         }
         return [[]];
       }
@@ -58,7 +58,6 @@ function createMockDb() {
           const product = products.find((p) => p.id === id);
           if (product) {
             product.sku = skuMatch[1];
-            product.currency = 'LKR';
             product.is_legacy = 1;
             product.is_active = 0;
           }
@@ -100,17 +99,17 @@ function createMockDb() {
   return { connection, categories, products, variants, productCategories };
 }
 
-test('reconcileLegacyCatalogue marks products legacy, LKR, inactive with deterministic SKUs', async () => {
+test('reconcileLegacyCatalogue marks products legacy, inactive with deterministic SKUs', async () => {
   const { connection, products, variants, productCategories, categories } = createMockDb();
 
   await reconcileLegacyCatalogue(connection);
 
   assert.equal(categories.length, 1);
-  assert.equal(categories[0].name, 'Everyday Essentials');
+  assert.equal(categories[0].name, 'Demo Electronics & Toys');
 
   // Verify all 3 products
   assert.equal(products[0].sku, 'LEGACY-PRD-1');
-  assert.equal(products[0].currency, 'LKR');
+  assert.equal(products[0].currency, 'USD');
   assert.equal(products[0].is_legacy, 1);
   assert.equal(products[0].is_active, 0);
 

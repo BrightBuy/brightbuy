@@ -56,6 +56,7 @@ export async function installFixture(connection) {
   for (const sql of prerequisites) await connection.query(sql);
   await installCheckout(connection);
   await installCheckout(connection); // successful repeat must verify rather than recreate
+  await connection.query("ALTER TABLE deliveries MODIFY estimated_date DATE NULL");
   await connection.query("INSERT INTO customers(id,name,email,password_hash,role) VALUES (1,'A','a@example.test','test-only-unused','customer'),(2,'B','b@example.test','test-only-unused','customer'),(3,'Admin','admin@example.test','test-only-unused','admin')");
   await connection.query("INSERT INTO cities VALUES(1,'Main',1,1),(2,'Other',0,1)");
   await connection.query("INSERT INTO stores VALUES(1,'Pickup',1,'Store road',1),(2,'Other Pickup',2,'Other road',1)");

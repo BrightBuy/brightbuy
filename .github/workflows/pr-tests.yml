@@ -150,6 +150,13 @@ jobs:
             -e MYSQL_TEST_DATABASE=brightbuy_tracking_test_ci \
             api node --test server/test/order-tracking.mysql.test.js
 
+      - name: Test report totals and historical grouping on MySQL
+        id: reports_mysql
+        if: ${{ !cancelled() && steps.database.outcome == 'success' }}
+        run: |
+          docker compose exec -T -e MYSQL_PWD=m3_test_only_password m3-test-db mysql -uroot -e 'CREATE DATABASE brightbuy_reports_test_ci;'
+          docker compose run --rm --no-deps -T -e REPORTS_TEST_MYSQL=1 -e MYSQL_TEST_HOST=m3-test-db -e MYSQL_TEST_USER=root -e MYSQL_TEST_PASSWORD=m3_test_only_password -e MYSQL_TEST_DATABASE=brightbuy_reports_test_ci api node --test server/test/reports.mysql.test.js
+
       - name: Start application with migrations and demo seed
         id: application
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -192,6 +199,7 @@ jobs:
               "delivery_days": "Delivery estimates and migrations",
               "locations_destinations": "Checkout destinations",
               "tracking_mysql": "Team checkout, tracking and demo replay",
+              "reports_mysql": "Report totals and historical grouping",
               "application": "Application startup and seed",
               "smoke": "Live application smoke tests",
           }

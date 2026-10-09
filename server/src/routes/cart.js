@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ApiError } from '../errors.js';
-import { readCart, putCartItem, removeCartItem, clearCart } from '../services/cart.js';
+import { mergeGuestCart, readCart, putCartItem, removeCartItem, clearCart } from '../services/cart.js';
 
 function requireCustomer(req, res, next) {
   if (req.user?.role !== 'customer') {
@@ -13,6 +13,8 @@ export function createCartRoutes(db, requireAuthentication) {
   const router = Router();
 
   router.use('/cart', requireAuthentication, requireCustomer);
+
+  router.post('/cart/merge', async (req, res) => { res.json({ data: await mergeGuestCart(db, req.user.id, req.body) }); });
 
   router.get('/cart', async (req, res) => {
     const cart = await readCart(db, req.user.id);

@@ -19,7 +19,7 @@ export function createOrderRoutes(db, requireAuthentication) {
   async function trackingList(admin, customerId) {
     return inTransaction(db, async (connection) => {
       const [rows] = await connection.execute(
-        `SELECT id FROM orders ${admin ? '' : 'WHERE customer_id = ?'} ORDER BY id`,
+        `SELECT id FROM orders ${admin ? '' : 'WHERE customer_id = ?'} ORDER BY created_at DESC, id DESC`,
         admin ? [] : [customerId],
       );
       const results = [];

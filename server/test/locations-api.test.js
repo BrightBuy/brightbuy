@@ -138,6 +138,8 @@ test(
       const connection = await db.getConnection();
       try {
         await applyMigrations(connection);
+        // This suite exercises creation from empty lists in its disposable database.
+        await connection.query('DELETE FROM cities');
       } finally {
         connection.release();
       }

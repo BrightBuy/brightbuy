@@ -42,6 +42,8 @@ export async function getAddresses(db, customerId) {
 
 export async function validateAddressInput(db, data) {
   const { recipient, line1, line2, line3, cityId, postalCode } = data || {};
+  if (data?.isDefault !== undefined && typeof data.isDefault !== 'boolean') throw new ApiError(400, 'VALIDATION_ERROR', 'isDefault must be a boolean.');
+  if (data?.country !== undefined && data.country !== 'US') throw new ApiError(400, 'VALIDATION_ERROR', 'Only US delivery addresses are supported.');
 
   if (typeof recipient !== 'string' || !recipient.trim() || recipient.length > 100) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Recipient is required (maximum 100 characters).');

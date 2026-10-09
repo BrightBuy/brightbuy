@@ -1,5 +1,5 @@
 export function returnPath(value, role) {
-  const fallback = role === 'admin' ? '/admin' : '/account/orders';
+  const fallback = role === 'admin' ? '/admin' : role === 'warehouse' ? '/warehouse' : '/account/orders';
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') ||
       value.includes('\\') || /^\/(login|register)(?:[/?#]|$)/.test(value)) return fallback;
   if (role !== 'admin' && /^\/admin(?:[/?#]|$)/.test(value)) return fallback;

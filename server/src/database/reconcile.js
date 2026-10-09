@@ -6,9 +6,9 @@
  *
  * 1. Products:
  *    - Marked `is_legacy = 1` and `is_active = 0` (starts inactive)
- *    - Retain their original `currency = 'LKR'`
+ *    - Preserve their recorded currency (new sample records use USD)
  *    - Assigned deterministic, unique legacy SKUs ('LEGACY-PRD-1', 'LEGACY-PRD-2', 'LEGACY-PRD-3')
- *    - Assigned to a legacy category ('Everyday Essentials')
+ *    - Assigned to a legacy category ('Demo Electronics & Toys')
  *
  * 2. Variants:
  *    - Marked `is_active = 1`
@@ -21,7 +21,7 @@ export async function reconcileLegacyCatalogue(connection) {
   // 1. Ensure a legacy category exists for legacy products
   await connection.query(`
     INSERT IGNORE INTO categories (id, name, description)
-    VALUES (1, 'Everyday Essentials', 'Foundation legacy collection')
+    VALUES (1, 'Demo Electronics & Toys', 'Foundation legacy collection')
   `);
 
   // 2. Reconcile legacy products
@@ -36,7 +36,6 @@ export async function reconcileLegacyCatalogue(connection) {
       await connection.query(`
         UPDATE products
         SET sku = '${legacySku}',
-            currency = 'LKR',
             is_legacy = 1,
             is_active = 0
         WHERE id = ${safeId}
@@ -58,8 +57,10 @@ export async function reconcileLegacyCatalogue(connection) {
     ORDER BY product_id ASC, id ASC
   `);
 
+  const legacyIds = new Set(products.filter(p => p.id <= 3 || !p.sku || p.is_legacy).map(p=>p.id));
   const productVariantsMap = new Map();
   for (const v of variants || []) {
+    if (!legacyIds.has(v.product_id)) continue;
     if (!productVariantsMap.has(v.product_id)) {
       productVariantsMap.set(v.product_id, []);
     }

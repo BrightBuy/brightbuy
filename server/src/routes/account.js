@@ -116,7 +116,7 @@ export function createAccountRoutes(db, requireAuthentication) {
 
   router.get('/admin/customers', requireAuthentication, requireAdmin, async (req, res) => {
     const [customers] = await db.query(
-      `SELECT ${USER_FIELDS} FROM customers WHERE role = 'customer' ORDER BY id`,
+      `SELECT ${USER_FIELDS} FROM customers WHERE role IN ('customer','warehouse') ORDER BY id`,
     );
     const mapped = customers.map((c) => ({
       id: c.id,
@@ -131,5 +131,12 @@ export function createAccountRoutes(db, requireAuthentication) {
     res.json({ data: mapped });
   });
 
+  router.patch('/admin/customers/:id/role', requireAuthentication, requireAdmin, async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1 || !req.body || Object.keys(req.body).length !== 1 || !['customer', 'warehouse'].includes(req.body.role)) throw new ApiError(400, 'VALIDATION_ERROR', 'Choose customer or warehouse access.');
+    const [result] = await db.execute("UPDATE customers SET role=? WHERE id=? AND role IN ('customer','warehouse')", [req.body.role, id]);
+    if (!result.affectedRows) throw new ApiError(404, 'NOT_FOUND', 'Customer or warehouse account not found.');
+    res.json({ data: { id, role: req.body.role } });
+  });
   return router;
 }

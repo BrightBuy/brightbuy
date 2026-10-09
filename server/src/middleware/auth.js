@@ -54,3 +54,8 @@ export function requireAdmin(req, res, next) {
     throw new ApiError(403, 'FORBIDDEN', 'Administrator access required.');
   next();
 }
+
+export function requireInventoryStaff(req, res, next) {
+  if (!['admin', 'warehouse'].includes(req.user.role)) throw new ApiError(403, 'FORBIDDEN', 'Inventory staff access required.');
+  next();
+}

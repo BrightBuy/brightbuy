@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { api } from '../api.js';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
+  const [cities, setCities] = useState([]);
+  useEffect(() => { const controller = new AbortController(); api('/cities', { signal: controller.signal }).then(setCities).catch(e => { if (!controller.signal.aborted) setError(e.message); }); return () => controller.abort(); }, []);
   const [busy, setBusy] = useState(false);
 
   async function submit(event) {
     event.preventDefault();
+    if (busy) return;
     setError('');
     const form = new FormData(event.currentTarget);
 
@@ -24,8 +28,8 @@ export function RegisterPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must have at least 8 characters, a letter and a number.');
       return;
     }
 
@@ -44,11 +48,12 @@ export function RegisterPage() {
           lastName,
           email,
           password,
-          phoneNumber: phoneNumber || undefined,
+          phoneNumber,
+          address: { recipient: `${firstName} ${lastName}`, line1: form.get('line1'), line2: form.get('line2'), cityId: Number(form.get('cityId')), postalCode: form.get('postalCode') },
         }),
       });
       // Navigate to login after successful registration
-      navigate('/login', { state: { registered: true, email } });
+      navigate('/login', { state: { registered: true, email, from: location.state?.from } });
     } catch (err) {
       setError(err.message || 'Registration failed.');
     } finally {
@@ -77,8 +82,14 @@ export function RegisterPage() {
         </label>
         <label>
           Phone Number
-          <input name="phoneNumber" type="tel" maxLength={30} placeholder="e.g. 555-0100" />
+          <input name="phoneNumber" type="tel" required autoComplete="tel" maxLength={30} placeholder="e.g. 555-0100" />
         </label>
+        <fieldset><legend>Your delivery address</legend>
+          <label>Street address *<input name="line1" autoComplete="address-line1" maxLength={200} required /></label>
+          <label>Apartment or suite<input name="line2" autoComplete="address-line2" maxLength={200} /></label>
+          <div className="form-pair"><label>Texas city *<select name="cityId" required defaultValue=""><option value="">Choose a city</option>{cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>
+          <label>Postal code *<input name="postalCode" autoComplete="postal-code" maxLength={20} required /></label></div>
+        </fieldset>
         <label>
           Password *
           <input
@@ -109,7 +120,7 @@ export function RegisterPage() {
         <button disabled={busy}>{busy ? 'Creating account…' : 'Register'}</button>
       </form>
       <p>
-        Already have an account? <Link to="/login">Sign in here</Link>.
+        Already have an account? <Link to="/login" state={{ from: location.state?.from }}>Sign in here</Link>.
       </p>
     </section>
   );

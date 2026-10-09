@@ -70,11 +70,11 @@ async function initialize(pool, scenario, adminId, categoryId) {
 
 async function prepare(pool, row, scenario) {
   if (row.checkout_payload) return json(row.checkout_payload);
-  const [[city]] = await pool.execute(
-    'SELECT id FROM cities WHERE is_active=1 AND is_main_city=? ORDER BY id LIMIT 1', [scenario.main]);
-  if (!city) throw new Error(`Missing active city for ${scenario.key}; run project setup.`);
   let destination;
   if (scenario.mode === 'delivery') {
+    const [[city]] = await pool.execute(
+      'SELECT id FROM cities WHERE is_active=1 AND is_main_city=? ORDER BY id LIMIT 1', [scenario.main]);
+    if (!city) throw new Error(`Missing active city for ${scenario.key}; run project setup.`);
     const [[existing]] = await pool.execute('SELECT id FROM addresses WHERE customer_id=? ORDER BY id LIMIT 1', [row.customer_id]);
     const address = existing || await createAddress(pool, row.customer_id, {
       recipient: `Checkout demo ${scenario.name}`, line1: '1 Demo Street',
@@ -83,7 +83,9 @@ async function prepare(pool, row, scenario) {
     destination = { addressId: address.id };
   } else {
     const [[store]] = await pool.execute(
-      'SELECT id FROM stores WHERE city_id=? AND is_active=1 ORDER BY id LIMIT 1', [city.id]);
+      `SELECT s.id FROM stores s JOIN cities c ON c.id=s.city_id
+       WHERE s.is_active=1 AND c.is_active=1 AND c.is_main_city=?
+       ORDER BY c.id,s.id LIMIT 1`, [scenario.main]);
     if (!store) throw new Error(`Missing active pickup store for ${scenario.key}.`);
     destination = { storeId: store.id };
   }

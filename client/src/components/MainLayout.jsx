@@ -19,11 +19,12 @@ export function MainLayout({ admin = false }) {
           <div className="nav-pages">
             <NavLink to="/" end><NavIcon name="home" /><span>Home</span></NavLink><NavLink to="/products"><NavIcon name="shop" /><span>Shop</span></NavLink><NavLink to="/about"><NavIcon name="about" /><span>About</span></NavLink><NavLink to="/contact"><NavIcon name="contact" /><span>Contact</span></NavLink>
             <NavLink to="/account/orders"><NavIcon name="orders" /><span>Orders</span></NavLink>
+            {user?.role === 'warehouse' && <NavLink to="/warehouse"><NavIcon name="admin" /><span>Inventory</span></NavLink>}
             {user?.role === 'admin' && <NavLink to="/admin"><NavIcon name="admin" /><span>Administration</span></NavLink>}
           </div>
           <div className="nav-account">
             <NavLink to={user ? '/account/profile' : '/login'}><NavIcon name="user" /><span>{user ? 'Account' : 'Sign in'}</span></NavLink>
-            {user?.role !== 'admin' && <NavLink to="/cart"><NavIcon name="bag" /><span>Bag</span></NavLink>}
+            {(!user || user.role === 'customer') && <NavLink to="/cart"><NavIcon name="bag" /><span>Bag</span></NavLink>}
             {user ? <button className="secondary" onClick={logout}><NavIcon name="logout" /><span>Sign out</span></button> : <NavLink to="/register"><NavIcon name="join" /><span>Join us</span></NavLink>}
           </div>
         </nav>
@@ -46,7 +47,7 @@ export function MainLayout({ admin = false }) {
         <Outlet />
       </main>
       <footer className="site-footer">
-        <div className="footer-identity"><Link className="brand" to="/" aria-label="BrightBuy home"><Brand /></Link><p>Good finds. Everyday possibilities.</p><p className="footer-description">Explore everyday essentials and new discoveries for your home, your routine, and beyond.</p></div>
+        <div className="footer-identity"><Link className="brand" to="/" aria-label="BrightBuy home"><Brand /></Link><p>Good finds. Everyday possibilities.</p><p className="footer-description">Electronics, gadgets and toys, with delivery across supported Texas cities and convenient store pickup.</p></div>
         <div className="footer-column"><h2>Explore</h2><nav aria-label="Explore"><Link to="/products">All products</Link><Link to="/about">About BrightBuy</Link><Link to="/contact">Contact us</Link><Link to="/cart">Shopping bag</Link><Link to="/account/orders">Track your orders</Link></nav></div>
         <div className="footer-column"><h2>Your BrightBuy</h2><nav aria-label="Your BrightBuy"><Link to="/account/profile">Your account</Link><Link to="/account/addresses">Saved addresses</Link>{!user && <Link to="/register">Create an account</Link>}{user?.role === 'admin' && <Link to="/admin">Administration</Link>}</nav></div>
         <div className="footer-column"><h2>Made for your day</h2><p>Choose delivery or pickup at checkout. Follow your order’s progress from your account.</p></div>

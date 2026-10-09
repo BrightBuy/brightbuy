@@ -1,3 +1,4 @@
+import { businessDate, addCalendarDays } from '../../../shared/time.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
@@ -39,7 +40,7 @@ export function CheckoutPage() {
         const activeCities = new Set(cities.map((city) => city.id));
         const usable = addresses.filter((address) =>
           address.country === 'US' && activeCities.has(address.cityId));
-        setData({ cart, addresses: usable, stores });
+        setData({ cart, addresses: usable, stores, cities });
         setAddressId(String(pending.current?.addressId || (usable.find((a) => a.isDefault) || usable[0])?.id || ''));
         if (pending.current) {
           setFulfillment(pending.current.fulfillment);
@@ -115,6 +116,9 @@ export function CheckoutPage() {
       <button onClick={() => setRevision((value) => value + 1)}>Reload checkout</button></>
       : <p>Loading checkout…</p>}
   </section>;
+  const selectedAddress = data.addresses.find(a => String(a.id) === addressId);
+  const city = data.cities.find(c => c.id === selectedAddress?.cityId);
+  const estimate = city ? addCalendarDays(businessDate(), (city.isMainCity ? 5 : 7) + (data.cart.hasShortage ? 3 : 0)) : null;
   const blocked = !data.cart.items.length || data.cart.items.some((item) => !item.available);
   return <section className="checkout card">
     <h1>Checkout</h1>
@@ -152,6 +156,8 @@ export function CheckoutPage() {
             {data.stores.map((s) => <option key={s.id} value={s.id}>{s.name} — {s.addressLine}</option>)}
           </select>
         </label>}
+        {fulfillment === 'delivery' && estimate && <p role="status">Estimated delivery: {estimate} (calendar days). The final date is confirmed when you place the order.</p>}
+        {fulfillment === 'pickup' && <p>We will update your order to Ready for pickup when it can be collected. Standard delivery estimates do not apply.</p>}
         <label>Payment method
           <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
             <option value="cod">Cash on delivery / collection</option>

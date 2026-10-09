@@ -67,7 +67,15 @@ export function createCatalogueRoutes(db) {
       q = trimmed || undefined;
     }
 
-    const result = await fetchPublicCatalogue(db, { q, categoryId, page, pageSize });
+    const { minPrice, maxPrice, availability } = req.query;
+    for (const value of [minPrice, maxPrice]) if (value !== undefined) parseMoney(value);
+    if (minPrice !== undefined && maxPrice !== undefined && parseMoney(minPrice) > parseMoney(maxPrice)) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Minimum price cannot exceed maximum price.');
+    }
+    if (availability !== undefined && !['in-stock', 'backorder'].includes(availability)) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Choose in-stock or backorder availability.');
+    }
+    const result = await fetchPublicCatalogue(db, { q, categoryId, minPrice, maxPrice, availability, page, pageSize });
     res.json({ data: result });
   });
 

@@ -92,12 +92,12 @@ export function makeCheckout({ readCart, getDestination, deliveryDays, applyStoc
           });
         }
       }
-      const days = await deliveryDays(connection, destination.isMainCity, shortage);
-      assertDeliveryDays(days, destination.isMainCity, shortage);
+      const days = input.fulfillment === 'delivery' ? await deliveryDays(connection, destination.isMainCity, shortage) : null;
+      if (input.fulfillment === 'delivery') assertDeliveryDays(days, destination.isMainCity, shortage);
       const [[placed]] = await connection.execute(
         "SELECT DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%sZ') AS placedAt FROM orders WHERE id=?",
         [orderId]);
-      const estimatedDate = addCalendarDays(businessDate(placed.placedAt), days);
+      const estimatedDate = days === null ? null : addCalendarDays(businessDate(placed.placedAt), days);
       await connection.execute(
         `INSERT INTO deliveries
          (order_id,mode,address_id,store_id,destination_snapshot,estimated_date,actual_date)

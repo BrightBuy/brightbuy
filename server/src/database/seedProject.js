@@ -1,6 +1,6 @@
 // Project product seed — M1 Milestone E
-// Creates 10 categories, 8 attributes and 40+ active project products with variants.
-// Idempotent: the schema_migrations marker 'project-v1' prevents re-running.
+// Creates electronics and toy categories, 8 attributes and 40+ active products.
+// Existing product SKUs and the project-v1 marker preserve administrator edits.
 // Run via: npm run seed:project (from server/)
 
 export async function seedProjectData(connection) {
@@ -8,10 +8,10 @@ export async function seedProjectData(connection) {
     'SELECT version FROM schema_migrations WHERE version = ?',
     ['project-v1'],
   );
-  if (seeded.length) return; // already seeded — nothing to do
 
   // ── 1. Categories ────────────────────────────────────────────────────────
   const categories = [
+    ['Toys', 'Building sets, puzzles and remote-control toys.'],
     ['Smartphones', 'Latest smartphones from top brands.'],
     ['Laptops', 'Powerful laptops for work, study and gaming.'],
     ['Headphones', 'Over-ear, on-ear and in-ear headphones.'],
@@ -98,6 +98,18 @@ export async function seedProjectData(connection) {
     }
   }
 
+  // Add these on existing seeded installations too; SKU checks preserve edits.
+  for (const [sku, name, description, price] of [
+    ['BB-TOY-BLOCKS', 'Creative Building Blocks', 'A 120-piece construction set for imaginative play, ages 6 and up.', '29.99'],
+    ['BB-TOY-ROBOT', 'Explorer Robot Kit', 'Build and explore with a beginner robot toy kit, ages 8 and up.', '49.99'],
+    ['BB-TOY-RACER', 'Remote Control Racer', 'Rechargeable remote-control toy car, ages 8 and up.', '34.99'],
+    ['BB-TOY-PUZZLE', 'Space Explorer Puzzle', 'A 100-piece space puzzle for family play, ages 6 and up.', '14.99'],
+  ]) {
+    await insertProduct({ sku, name, description, brand: 'BrightBuy Play', categoryNames: ['Toys'],
+      variants: [{ sku: sku + '-STD', name: 'Standard', price, attrs: [] }] });
+  }
+  if (seeded.length) return;
+
   // ── 3. Products (40+) ────────────────────────────────────────────────────
 
   // ── Smartphones (6 products) ─────────────────────────────────────────────
@@ -108,9 +120,9 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'NOVA-X1-PRO-128-BLK', name: 'Black / 128 GB', price: '129900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '128 GB' }], isDefault: true },
-      { sku: 'NOVA-X1-PRO-256-BLK', name: 'Black / 256 GB', price: '149900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '256 GB' }] },
-      { sku: 'NOVA-X1-PRO-256-SLV', name: 'Silver / 256 GB', price: '149900.00', attrs: [{ attr: 'Color', value: 'Silver' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'NOVA-X1-PRO-128-BLK', name: 'Black / 128 GB', price: '1299.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '128 GB' }], isDefault: true },
+      { sku: 'NOVA-X1-PRO-256-BLK', name: 'Black / 256 GB', price: '1499.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'NOVA-X1-PRO-256-SLV', name: 'Silver / 256 GB', price: '1499.00', attrs: [{ attr: 'Color', value: 'Silver' }, { attr: 'Storage', value: '256 GB' }] },
     ],
   });
 
@@ -121,8 +133,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'NOVA-A5-LITE-64-BLU', name: 'Blue / 64 GB', price: '54900.00', attrs: [{ attr: 'Color', value: 'Blue' }, { attr: 'Storage', value: '64 GB' }], isDefault: true },
-      { sku: 'NOVA-A5-LITE-128-BLU', name: 'Blue / 128 GB', price: '64900.00', attrs: [{ attr: 'Color', value: 'Blue' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'NOVA-A5-LITE-64-BLU', name: 'Blue / 64 GB', price: '549.00', attrs: [{ attr: 'Color', value: 'Blue' }, { attr: 'Storage', value: '64 GB' }], isDefault: true },
+      { sku: 'NOVA-A5-LITE-128-BLU', name: 'Blue / 128 GB', price: '649.00', attrs: [{ attr: 'Color', value: 'Blue' }, { attr: 'Storage', value: '128 GB' }] },
     ],
   });
 
@@ -133,9 +145,9 @@ export async function seedProjectData(connection) {
     brand: 'Google',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'PIXEL-8A-128-CRL', name: 'Coral / 128 GB', price: '99900.00', attrs: [{ attr: 'Color', value: 'Coral' }, { attr: 'Storage', value: '128 GB' }], isDefault: true },
-      { sku: 'PIXEL-8A-256-CRL', name: 'Coral / 256 GB', price: '119900.00', attrs: [{ attr: 'Color', value: 'Coral' }, { attr: 'Storage', value: '256 GB' }] },
-      { sku: 'PIXEL-8A-128-OBS', name: 'Obsidian / 128 GB', price: '99900.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'PIXEL-8A-128-CRL', name: 'Coral / 128 GB', price: '999.00', attrs: [{ attr: 'Color', value: 'Coral' }, { attr: 'Storage', value: '128 GB' }], isDefault: true },
+      { sku: 'PIXEL-8A-256-CRL', name: 'Coral / 256 GB', price: '1199.00', attrs: [{ attr: 'Color', value: 'Coral' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'PIXEL-8A-128-OBS', name: 'Obsidian / 128 GB', price: '999.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Storage', value: '128 GB' }] },
     ],
   });
 
@@ -146,7 +158,7 @@ export async function seedProjectData(connection) {
     brand: 'Orbit',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'ORBIT-S22-128-GRN', name: 'Green / 128 GB', price: '89900.00', attrs: [{ attr: 'Color', value: 'Green' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'ORBIT-S22-128-GRN', name: 'Green / 128 GB', price: '899.00', attrs: [{ attr: 'Color', value: 'Green' }, { attr: 'Storage', value: '128 GB' }] },
     ],
   });
 
@@ -157,8 +169,8 @@ export async function seedProjectData(connection) {
     brand: 'Swift',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'SWIFT-Z9-64-BLK', name: 'Black / 64 GB', price: '39900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '64 GB' }] },
-      { sku: 'SWIFT-Z9-128-BLK', name: 'Black / 128 GB', price: '44900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'SWIFT-Z9-64-BLK', name: 'Black / 64 GB', price: '399.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '64 GB' }] },
+      { sku: 'SWIFT-Z9-128-BLK', name: 'Black / 128 GB', price: '449.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '128 GB' }] },
     ],
   });
 
@@ -169,8 +181,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Smartphones'],
     variants: [
-      { sku: 'NOVA-FOLD-2-256-BLK', name: 'Black / 256 GB', price: '249900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '256 GB' }] },
-      { sku: 'NOVA-FOLD-2-512-SLV', name: 'Silver / 512 GB', price: '279900.00', attrs: [{ attr: 'Color', value: 'Silver' }, { attr: 'Storage', value: '512 GB' }] },
+      { sku: 'NOVA-FOLD-2-256-BLK', name: 'Black / 256 GB', price: '2499.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'NOVA-FOLD-2-512-SLV', name: 'Silver / 512 GB', price: '2799.00', attrs: [{ attr: 'Color', value: 'Silver' }, { attr: 'Storage', value: '512 GB' }] },
     ],
   });
 
@@ -182,8 +194,8 @@ export async function seedProjectData(connection) {
     brand: 'Apex',
     categoryNames: ['Laptops'],
     variants: [
-      { sku: 'APEX-BOOK-15-16-512', name: '16 GB / 512 GB SSD', price: '219900.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }], isDefault: true },
-      { sku: 'APEX-BOOK-15-32-1TB', name: '32 GB / 1 TB SSD', price: '269900.00', attrs: [{ attr: 'RAM', value: '32 GB' }, { attr: 'Storage', value: '1 TB' }] },
+      { sku: 'APEX-BOOK-15-16-512', name: '16 GB / 512 GB SSD', price: '2199.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }], isDefault: true },
+      { sku: 'APEX-BOOK-15-32-1TB', name: '32 GB / 1 TB SSD', price: '2699.00', attrs: [{ attr: 'RAM', value: '32 GB' }, { attr: 'Storage', value: '1 TB' }] },
     ],
   });
 
@@ -194,8 +206,8 @@ export async function seedProjectData(connection) {
     brand: 'Titan',
     categoryNames: ['Laptops', 'Gaming'],
     variants: [
-      { sku: 'TITAN-PRO-14-16-512', name: '16 GB / 512 GB', price: '189900.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }] },
-      { sku: 'TITAN-PRO-14-32-1TB', name: '32 GB / 1 TB', price: '229900.00', attrs: [{ attr: 'RAM', value: '32 GB' }, { attr: 'Storage', value: '1 TB' }] },
+      { sku: 'TITAN-PRO-14-16-512', name: '16 GB / 512 GB', price: '1899.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }] },
+      { sku: 'TITAN-PRO-14-32-1TB', name: '32 GB / 1 TB', price: '2299.00', attrs: [{ attr: 'RAM', value: '32 GB' }, { attr: 'Storage', value: '1 TB' }] },
     ],
   });
 
@@ -206,7 +218,7 @@ export async function seedProjectData(connection) {
     brand: 'Zephyr',
     categoryNames: ['Laptops'],
     variants: [
-      { sku: 'ZEPHYR-AIR-13-8-256', name: '8 GB / 256 GB', price: '139900.00', attrs: [{ attr: 'RAM', value: '8 GB' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'ZEPHYR-AIR-13-8-256', name: '8 GB / 256 GB', price: '1399.00', attrs: [{ attr: 'RAM', value: '8 GB' }, { attr: 'Storage', value: '256 GB' }] },
     ],
   });
 
@@ -217,7 +229,7 @@ export async function seedProjectData(connection) {
     brand: 'ProBook',
     categoryNames: ['Laptops', 'Tablets'],
     variants: [
-      { sku: 'PROBOOK-X360-16-512', name: '16 GB / 512 GB', price: '174900.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }] },
+      { sku: 'PROBOOK-X360-16-512', name: '16 GB / 512 GB', price: '1749.00', attrs: [{ attr: 'RAM', value: '16 GB' }, { attr: 'Storage', value: '512 GB' }] },
     ],
   });
 
@@ -228,8 +240,8 @@ export async function seedProjectData(connection) {
     brand: 'Swift',
     categoryNames: ['Laptops'],
     variants: [
-      { sku: 'SWIFT-EDU-11-4-128', name: '4 GB / 128 GB', price: '59900.00', attrs: [{ attr: 'RAM', value: '4 GB' }, { attr: 'Storage', value: '128 GB' }] },
-      { sku: 'SWIFT-EDU-11-8-256', name: '8 GB / 256 GB', price: '74900.00', attrs: [{ attr: 'RAM', value: '8 GB' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'SWIFT-EDU-11-4-128', name: '4 GB / 128 GB', price: '599.00', attrs: [{ attr: 'RAM', value: '4 GB' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'SWIFT-EDU-11-8-256', name: '8 GB / 256 GB', price: '749.00', attrs: [{ attr: 'RAM', value: '8 GB' }, { attr: 'Storage', value: '256 GB' }] },
     ],
   });
 
@@ -241,8 +253,8 @@ export async function seedProjectData(connection) {
     brand: 'Aura',
     categoryNames: ['Headphones'],
     variants: [
-      { sku: 'AURA-NC700-BLK', name: 'Black', price: '44900.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
-      { sku: 'AURA-NC700-SLV', name: 'Silver', price: '44900.00', attrs: [{ attr: 'Color', value: 'Silver' }] },
+      { sku: 'AURA-NC700-BLK', name: 'Black', price: '449.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
+      { sku: 'AURA-NC700-SLV', name: 'Silver', price: '449.00', attrs: [{ attr: 'Color', value: 'Silver' }] },
     ],
   });
 
@@ -253,8 +265,8 @@ export async function seedProjectData(connection) {
     brand: 'Sonix',
     categoryNames: ['Headphones'],
     variants: [
-      { sku: 'SONIX-WH-1000-BLK', name: 'Black', price: '39900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'SONIX-WH-1000-WHT', name: 'White', price: '39900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'SONIX-WH-1000-BLK', name: 'Black', price: '399.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'SONIX-WH-1000-WHT', name: 'White', price: '399.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -265,9 +277,9 @@ export async function seedProjectData(connection) {
     brand: 'Beats',
     categoryNames: ['Headphones', 'Wearables'],
     variants: [
-      { sku: 'BEATS-FIT-PRO-BLK', name: 'Black', price: '29900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'BEATS-FIT-PRO-WHT', name: 'White', price: '29900.00', attrs: [{ attr: 'Color', value: 'White' }] },
-      { sku: 'BEATS-FIT-PRO-PRP', name: 'Purple', price: '29900.00', attrs: [{ attr: 'Color', value: 'Purple' }] },
+      { sku: 'BEATS-FIT-PRO-BLK', name: 'Black', price: '299.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'BEATS-FIT-PRO-WHT', name: 'White', price: '299.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'BEATS-FIT-PRO-PRP', name: 'Purple', price: '299.00', attrs: [{ attr: 'Color', value: 'Purple' }] },
     ],
   });
 
@@ -278,8 +290,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Headphones', 'Wearables'],
     variants: [
-      { sku: 'NOVA-BUDS-3-BLK', name: 'Black', price: '14900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'NOVA-BUDS-3-WHT', name: 'White', price: '14900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'NOVA-BUDS-3-BLK', name: 'Black', price: '149.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'NOVA-BUDS-3-WHT', name: 'White', price: '149.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -290,7 +302,7 @@ export async function seedProjectData(connection) {
     brand: 'Zephyr',
     categoryNames: ['Headphones'],
     variants: [
-      { sku: 'ZEPHYR-OPENFIT-BLK', name: 'Black', price: '19900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'ZEPHYR-OPENFIT-BLK', name: 'Black', price: '199.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 
@@ -302,8 +314,8 @@ export async function seedProjectData(connection) {
     brand: 'Boom',
     categoryNames: ['Speakers'],
     variants: [
-      { sku: 'BOOM-CHARGE5-BLK', name: 'Black', price: '24900.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
-      { sku: 'BOOM-CHARGE5-BLU', name: 'Blue', price: '24900.00', attrs: [{ attr: 'Color', value: 'Blue' }] },
+      { sku: 'BOOM-CHARGE5-BLK', name: 'Black', price: '249.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
+      { sku: 'BOOM-CHARGE5-BLU', name: 'Blue', price: '249.00', attrs: [{ attr: 'Color', value: 'Blue' }] },
     ],
   });
 
@@ -314,8 +326,8 @@ export async function seedProjectData(connection) {
     brand: 'Sonix',
     categoryNames: ['Speakers'],
     variants: [
-      { sku: 'SONIX-SRS-XB43-BLK', name: 'Black', price: '29900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'SONIX-SRS-XB43-RED', name: 'Red', price: '29900.00', attrs: [{ attr: 'Color', value: 'Red' }] },
+      { sku: 'SONIX-SRS-XB43-BLK', name: 'Black', price: '299.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'SONIX-SRS-XB43-RED', name: 'Red', price: '299.00', attrs: [{ attr: 'Color', value: 'Red' }] },
     ],
   });
 
@@ -326,8 +338,8 @@ export async function seedProjectData(connection) {
     brand: 'Sonix',
     categoryNames: ['Speakers', 'Smart Home'],
     variants: [
-      { sku: 'ECHO-DOT5-CHR', name: 'Charcoal', price: '9900.00', attrs: [{ attr: 'Color', value: 'Charcoal' }] },
-      { sku: 'ECHO-DOT5-GLC', name: 'Glacier White', price: '9900.00', attrs: [{ attr: 'Color', value: 'Glacier White' }] },
+      { sku: 'ECHO-DOT5-CHR', name: 'Charcoal', price: '99.00', attrs: [{ attr: 'Color', value: 'Charcoal' }] },
+      { sku: 'ECHO-DOT5-GLC', name: 'Glacier White', price: '99.00', attrs: [{ attr: 'Color', value: 'Glacier White' }] },
     ],
   });
 
@@ -338,7 +350,7 @@ export async function seedProjectData(connection) {
     brand: 'Apex',
     categoryNames: ['Speakers'],
     variants: [
-      { sku: 'APEX-PARTY-BOX-BLK', name: 'Black', price: '79900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'APEX-PARTY-BOX-BLK', name: 'Black', price: '799.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 
@@ -350,7 +362,7 @@ export async function seedProjectData(connection) {
     brand: 'Lumix',
     categoryNames: ['Cameras'],
     variants: [
-      { sku: 'LUMIX-G9II-BODY', name: 'Body Only', price: '174900.00', attrs: [] },
+      { sku: 'LUMIX-G9II-BODY', name: 'Body Only', price: '1749.00', attrs: [] },
     ],
   });
 
@@ -361,8 +373,8 @@ export async function seedProjectData(connection) {
     brand: 'Canon',
     categoryNames: ['Cameras'],
     variants: [
-      { sku: 'CANON-R50-BLK', name: 'Black Body Only', price: '129900.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
-      { sku: 'CANON-R50-WHT', name: 'White Body Only', price: '129900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'CANON-R50-BLK', name: 'Black Body Only', price: '1299.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
+      { sku: 'CANON-R50-WHT', name: 'White Body Only', price: '1299.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -373,8 +385,8 @@ export async function seedProjectData(connection) {
     brand: 'Sony',
     categoryNames: ['Cameras'],
     variants: [
-      { sku: 'SONY-ZVE10-BLK', name: 'Black', price: '109900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'SONY-ZVE10-WHT', name: 'White', price: '109900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'SONY-ZVE10-BLK', name: 'Black', price: '1099.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'SONY-ZVE10-WHT', name: 'White', price: '1099.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -385,9 +397,9 @@ export async function seedProjectData(connection) {
     brand: 'Fujifilm',
     categoryNames: ['Cameras'],
     variants: [
-      { sku: 'INSTAX-MINI12-PNK', name: 'Pink', price: '19900.00', attrs: [{ attr: 'Color', value: 'Pink' }], isDefault: true },
-      { sku: 'INSTAX-MINI12-BLU', name: 'Blue', price: '19900.00', attrs: [{ attr: 'Color', value: 'Blue' }] },
-      { sku: 'INSTAX-MINI12-WHT', name: 'White', price: '19900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'INSTAX-MINI12-PNK', name: 'Pink', price: '199.00', attrs: [{ attr: 'Color', value: 'Pink' }], isDefault: true },
+      { sku: 'INSTAX-MINI12-BLU', name: 'Blue', price: '199.00', attrs: [{ attr: 'Color', value: 'Blue' }] },
+      { sku: 'INSTAX-MINI12-WHT', name: 'White', price: '199.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -399,8 +411,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Gaming', 'Accessories'],
     variants: [
-      { sku: 'NOVA-CTRL-PRO-WHT', name: 'White', price: '14900.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
-      { sku: 'NOVA-CTRL-PRO-BLK', name: 'Black', price: '14900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'NOVA-CTRL-PRO-WHT', name: 'White', price: '149.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
+      { sku: 'NOVA-CTRL-PRO-BLK', name: 'Black', price: '149.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 
@@ -411,7 +423,7 @@ export async function seedProjectData(connection) {
     brand: 'Titan',
     categoryNames: ['Gaming', 'Headphones'],
     variants: [
-      { sku: 'TITAN-G7-BLK', name: 'Black', price: '12900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'TITAN-G7-BLK', name: 'Black', price: '129.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 
@@ -422,8 +434,8 @@ export async function seedProjectData(connection) {
     brand: 'Vortex',
     categoryNames: ['Gaming', 'Accessories'],
     variants: [
-      { sku: 'VORTEX-PAD-XL-BLK', name: 'Black', price: '4900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'VORTEX-PAD-XL-RED', name: 'Red', price: '4900.00', attrs: [{ attr: 'Color', value: 'Red' }] },
+      { sku: 'VORTEX-PAD-XL-BLK', name: 'Black', price: '49.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'VORTEX-PAD-XL-RED', name: 'Red', price: '49.00', attrs: [{ attr: 'Color', value: 'Red' }] },
     ],
   });
 
@@ -434,8 +446,8 @@ export async function seedProjectData(connection) {
     brand: 'Orbit',
     categoryNames: ['Gaming'],
     variants: [
-      { sku: 'ORBIT-CHAIR-GT-BLK', name: 'Black / Red', price: '59900.00', attrs: [{ attr: 'Color', value: 'Black / Red' }] },
-      { sku: 'ORBIT-CHAIR-GT-WHT', name: 'White / Blue', price: '59900.00', attrs: [{ attr: 'Color', value: 'White / Blue' }] },
+      { sku: 'ORBIT-CHAIR-GT-BLK', name: 'Black / Red', price: '599.00', attrs: [{ attr: 'Color', value: 'Black / Red' }] },
+      { sku: 'ORBIT-CHAIR-GT-WHT', name: 'White / Blue', price: '599.00', attrs: [{ attr: 'Color', value: 'White / Blue' }] },
     ],
   });
 
@@ -447,8 +459,8 @@ export async function seedProjectData(connection) {
     brand: 'Apex',
     categoryNames: ['Tablets'],
     variants: [
-      { sku: 'APEX-PAD-11-64-GRY', name: 'Grey / 64 GB', price: '49900.00', attrs: [{ attr: 'Color', value: 'Grey' }, { attr: 'Storage', value: '64 GB' }], isDefault: true },
-      { sku: 'APEX-PAD-11-128-GRY', name: 'Grey / 128 GB', price: '59900.00', attrs: [{ attr: 'Color', value: 'Grey' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'APEX-PAD-11-64-GRY', name: 'Grey / 64 GB', price: '499.00', attrs: [{ attr: 'Color', value: 'Grey' }, { attr: 'Storage', value: '64 GB' }], isDefault: true },
+      { sku: 'APEX-PAD-11-128-GRY', name: 'Grey / 128 GB', price: '599.00', attrs: [{ attr: 'Color', value: 'Grey' }, { attr: 'Storage', value: '128 GB' }] },
     ],
   });
 
@@ -459,8 +471,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Tablets'],
     variants: [
-      { sku: 'NOVA-TAB-S9-128-GRF', name: 'Graphite / 128 GB', price: '119900.00', attrs: [{ attr: 'Color', value: 'Graphite' }, { attr: 'Storage', value: '128 GB' }] },
-      { sku: 'NOVA-TAB-S9-256-GRF', name: 'Graphite / 256 GB', price: '139900.00', attrs: [{ attr: 'Color', value: 'Graphite' }, { attr: 'Storage', value: '256 GB' }] },
+      { sku: 'NOVA-TAB-S9-128-GRF', name: 'Graphite / 128 GB', price: '1199.00', attrs: [{ attr: 'Color', value: 'Graphite' }, { attr: 'Storage', value: '128 GB' }] },
+      { sku: 'NOVA-TAB-S9-256-GRF', name: 'Graphite / 256 GB', price: '1399.00', attrs: [{ attr: 'Color', value: 'Graphite' }, { attr: 'Storage', value: '256 GB' }] },
     ],
   });
 
@@ -471,8 +483,8 @@ export async function seedProjectData(connection) {
     brand: 'ProBook',
     categoryNames: ['Tablets'],
     variants: [
-      { sku: 'PROBOOK-TAB-MINI-32', name: '32 GB', price: '34900.00', attrs: [{ attr: 'Storage', value: '32 GB' }] },
-      { sku: 'PROBOOK-TAB-MINI-64', name: '64 GB', price: '39900.00', attrs: [{ attr: 'Storage', value: '64 GB' }] },
+      { sku: 'PROBOOK-TAB-MINI-32', name: '32 GB', price: '349.00', attrs: [{ attr: 'Storage', value: '32 GB' }] },
+      { sku: 'PROBOOK-TAB-MINI-64', name: '64 GB', price: '399.00', attrs: [{ attr: 'Storage', value: '64 GB' }] },
     ],
   });
 
@@ -484,8 +496,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Smart Home'],
     variants: [
-      { sku: 'NOVA-SMART-PLUG-WIFI-1', name: 'Single Pack', price: '4900.00', attrs: [] },
-      { sku: 'NOVA-SMART-PLUG-WIFI-4', name: 'Four Pack', price: '17900.00', attrs: [] },
+      { sku: 'NOVA-SMART-PLUG-WIFI-1', name: 'Single Pack', price: '49.00', attrs: [] },
+      { sku: 'NOVA-SMART-PLUG-WIFI-4', name: 'Four Pack', price: '179.00', attrs: [] },
     ],
   });
 
@@ -496,8 +508,8 @@ export async function seedProjectData(connection) {
     brand: 'Lumio',
     categoryNames: ['Smart Home'],
     variants: [
-      { sku: 'LUMIO-BULB-E27-1', name: 'Single', price: '3900.00', attrs: [] },
-      { sku: 'LUMIO-BULB-E27-3', name: 'Three Pack', price: '10900.00', attrs: [] },
+      { sku: 'LUMIO-BULB-E27-1', name: 'Single', price: '39.00', attrs: [] },
+      { sku: 'LUMIO-BULB-E27-3', name: 'Three Pack', price: '109.00', attrs: [] },
     ],
   });
 
@@ -508,8 +520,8 @@ export async function seedProjectData(connection) {
     brand: 'Sonix',
     categoryNames: ['Smart Home', 'Speakers'],
     variants: [
-      { sku: 'ECHO-SHOW8-CHR', name: 'Charcoal', price: '19900.00', attrs: [{ attr: 'Color', value: 'Charcoal' }], isDefault: true },
-      { sku: 'ECHO-SHOW8-GLW', name: 'Glacier White', price: '19900.00', attrs: [{ attr: 'Color', value: 'Glacier White' }] },
+      { sku: 'ECHO-SHOW8-CHR', name: 'Charcoal', price: '199.00', attrs: [{ attr: 'Color', value: 'Charcoal' }], isDefault: true },
+      { sku: 'ECHO-SHOW8-GLW', name: 'Glacier White', price: '199.00', attrs: [{ attr: 'Color', value: 'Glacier White' }] },
     ],
   });
 
@@ -520,7 +532,7 @@ export async function seedProjectData(connection) {
     brand: 'Vortex',
     categoryNames: ['Smart Home'],
     variants: [
-      { sku: 'VORTEX-CAM-360-WHT', name: 'White', price: '12900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'VORTEX-CAM-360-WHT', name: 'White', price: '129.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -532,9 +544,9 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Wearables'],
     variants: [
-      { sku: 'NOVA-WATCH-6-40-BLK', name: 'Black / 40 mm', price: '44900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Size', value: '40 mm' }], isDefault: true },
-      { sku: 'NOVA-WATCH-6-44-BLK', name: 'Black / 44 mm', price: '49900.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Size', value: '44 mm' }] },
-      { sku: 'NOVA-WATCH-6-40-GLD', name: 'Gold / 40 mm', price: '49900.00', attrs: [{ attr: 'Color', value: 'Gold' }, { attr: 'Size', value: '40 mm' }] },
+      { sku: 'NOVA-WATCH-6-40-BLK', name: 'Black / 40 mm', price: '449.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Size', value: '40 mm' }], isDefault: true },
+      { sku: 'NOVA-WATCH-6-44-BLK', name: 'Black / 44 mm', price: '499.00', attrs: [{ attr: 'Color', value: 'Black' }, { attr: 'Size', value: '44 mm' }] },
+      { sku: 'NOVA-WATCH-6-40-GLD', name: 'Gold / 40 mm', price: '499.00', attrs: [{ attr: 'Color', value: 'Gold' }, { attr: 'Size', value: '40 mm' }] },
     ],
   });
 
@@ -545,8 +557,8 @@ export async function seedProjectData(connection) {
     brand: 'Google',
     categoryNames: ['Wearables'],
     variants: [
-      { sku: 'PIXEL-WATCH-3-41-OBS', name: 'Obsidian / 41 mm', price: '39900.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Size', value: '41 mm' }] },
-      { sku: 'PIXEL-WATCH-3-45-OBS', name: 'Obsidian / 45 mm', price: '49900.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Size', value: '45 mm' }] },
+      { sku: 'PIXEL-WATCH-3-41-OBS', name: 'Obsidian / 41 mm', price: '399.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Size', value: '41 mm' }] },
+      { sku: 'PIXEL-WATCH-3-45-OBS', name: 'Obsidian / 45 mm', price: '499.00', attrs: [{ attr: 'Color', value: 'Obsidian' }, { attr: 'Size', value: '45 mm' }] },
     ],
   });
 
@@ -557,8 +569,8 @@ export async function seedProjectData(connection) {
     brand: 'Orbit',
     categoryNames: ['Wearables'],
     variants: [
-      { sku: 'ORBIT-BAND-7-BLK', name: 'Black', price: '9900.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
-      { sku: 'ORBIT-BAND-7-PNK', name: 'Pink', price: '9900.00', attrs: [{ attr: 'Color', value: 'Pink' }] },
+      { sku: 'ORBIT-BAND-7-BLK', name: 'Black', price: '99.00', attrs: [{ attr: 'Color', value: 'Black' }], isDefault: true },
+      { sku: 'ORBIT-BAND-7-PNK', name: 'Pink', price: '99.00', attrs: [{ attr: 'Color', value: 'Pink' }] },
     ],
   });
 
@@ -569,8 +581,8 @@ export async function seedProjectData(connection) {
     brand: 'Aura',
     categoryNames: ['Wearables'],
     variants: [
-      { sku: 'AURA-SPORT-WATCH-BLK', name: 'Black', price: '34900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'AURA-SPORT-WATCH-ORG', name: 'Orange', price: '34900.00', attrs: [{ attr: 'Color', value: 'Orange' }] },
+      { sku: 'AURA-SPORT-WATCH-BLK', name: 'Black', price: '349.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'AURA-SPORT-WATCH-ORG', name: 'Orange', price: '349.00', attrs: [{ attr: 'Color', value: 'Orange' }] },
     ],
   });
 
@@ -582,8 +594,8 @@ export async function seedProjectData(connection) {
     brand: 'Zephyr',
     categoryNames: ['Accessories'],
     variants: [
-      { sku: 'ZEPHYR-CHARGE-100W-WHT', name: 'White', price: '7900.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
-      { sku: 'ZEPHYR-CHARGE-100W-BLK', name: 'Black', price: '7900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'ZEPHYR-CHARGE-100W-WHT', name: 'White', price: '79.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
+      { sku: 'ZEPHYR-CHARGE-100W-BLK', name: 'Black', price: '79.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 
@@ -594,8 +606,8 @@ export async function seedProjectData(connection) {
     brand: 'Lumio',
     categoryNames: ['Accessories'],
     variants: [
-      { sku: 'LUMIO-USBC-2M-BLK', name: 'Black', price: '1900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
-      { sku: 'LUMIO-USBC-2M-WHT', name: 'White', price: '1900.00', attrs: [{ attr: 'Color', value: 'White' }] },
+      { sku: 'LUMIO-USBC-2M-BLK', name: 'Black', price: '19.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'LUMIO-USBC-2M-WHT', name: 'White', price: '19.00', attrs: [{ attr: 'Color', value: 'White' }] },
     ],
   });
 
@@ -606,7 +618,7 @@ export async function seedProjectData(connection) {
     brand: 'Apex',
     categoryNames: ['Accessories'],
     variants: [
-      { sku: 'APEX-HUB-7IN1-GRY', name: 'Space Grey', price: '9900.00', attrs: [{ attr: 'Color', value: 'Space Grey' }] },
+      { sku: 'APEX-HUB-7IN1-GRY', name: 'Space Grey', price: '99.00', attrs: [{ attr: 'Color', value: 'Space Grey' }] },
     ],
   });
 
@@ -617,8 +629,8 @@ export async function seedProjectData(connection) {
     brand: 'Nova',
     categoryNames: ['Accessories', 'Smart Home'],
     variants: [
-      { sku: 'NOVA-MAGSAFE-STAND-WHT', name: 'White', price: '6900.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
-      { sku: 'NOVA-MAGSAFE-STAND-BLK', name: 'Black', price: '6900.00', attrs: [{ attr: 'Color', value: 'Black' }] },
+      { sku: 'NOVA-MAGSAFE-STAND-WHT', name: 'White', price: '69.00', attrs: [{ attr: 'Color', value: 'White' }], isDefault: true },
+      { sku: 'NOVA-MAGSAFE-STAND-BLK', name: 'Black', price: '69.00', attrs: [{ attr: 'Color', value: 'Black' }] },
     ],
   });
 

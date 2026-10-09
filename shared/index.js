@@ -1,4 +1,4 @@
-export const CURRENCY = 'LKR';
+export const CURRENCY = 'USD';
 
 // Freeze the arrays too: importing this module must not let a consumer change
 // the order rules for every other request in the same process.

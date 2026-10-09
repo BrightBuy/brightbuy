@@ -268,11 +268,11 @@ test('catalogue does not offer legacy currency products to USD checkout', async 
     if (options.method) writes.push(path);
     if (path === '/categories') return [];
     return { total: 2, items: [
-      { id: 3, name: 'Canvas Backpack', currency: 'LKR', defaultVariant: { id: 5, price: '6800.00' } },
+      { id: 3, name: 'Archived Robot Kit', currency: 'LKR', defaultVariant: { id: 5, price: '6800.00' } },
       { id: 4, name: 'USD headphones', currency: 'USD', defaultVariant: { id: 6, price: '40.00' } },
     ] };
   });
-  assert.equal(document.querySelector('[aria-label="Add Canvas Backpack to cart"]').disabled, true);
+  assert.equal(document.querySelector('[aria-label="Add Archived Robot Kit to cart"]').disabled, true);
   assert.equal(document.querySelector('[aria-label="Add USD headphones to cart"]').disabled, false);
   assert.match(document.body.textContent, /Not available for checkout/);
   assert.deepEqual(writes, []);
@@ -290,4 +290,37 @@ test('product imagery follows the selected variant and resets fallback for anoth
  await React.act(async()=>root.render(h(ProductImage,{product,variant:{id:11,name:'White'}})));
  assert.match(document.querySelector('img').src,/variants\/11\/image$/);
  assert.equal(document.querySelector('img').alt,'Headphones — White');
+});
+
+
+test('guest bag route is public and guest items can be removed without authentication', async () => {
+  const { App } = await import('../src/App.jsx');
+  const { setToken } = await import('../src/api.js'); setToken(null);
+  window.history.replaceState(null, '', '/cart');
+  sessionStorage.setItem('brightbuy:guest-cart', JSON.stringify({items:[{productId:1,variantId:2,quantity:1}]}));
+  globalThis.fetch = async path => { assert.equal(path, '/api/products/1'); return Response.json({data:{name:'Guest gadget',currency:'USD',variants:[{id:2,name:'Blue',price:'12.00',stock:0}]}}); };
+  root=createRoot(document.getElementById('root'));
+  await React.act(async()=>root.render(h(App))); await flush();
+  assert.match(document.body.textContent, /Shopping Cart/); assert.match(document.body.textContent,/Guest gadget/);
+  await click('Remove'); assert.match(document.body.textContent,/Your cart is empty/);
+  window.history.replaceState(null, '', '/');
+});
+test('registration form includes required phone and delivery address in its request', async () => {
+  const { RegisterPage } = await import('../src/pages/RegisterPage.jsx'); let submitted;
+  await mount(RegisterPage,async(path,options)=>{
+    if(path==='/cities')return [{id:1,name:'Dallas'}];
+    if(path==='/auth/register'){submitted=JSON.parse(options.body);return {id:9};}
+    throw Error(path);
+  });
+  const values={firstName:'Test',lastName:'Customer',email:'test@example.test',phoneNumber:'5125550123',line1:'100 Test Lane',line2:'',cityId:'1',postalCode:'75001',password:'Password123',confirmPassword:'Password123'};
+  for(const [name,value] of Object.entries(values)){const field=document.querySelector('[name="'+name+'"]');assert.ok(field,name);field.value=value;}
+  assert.equal(document.querySelector('[name="phoneNumber"]').required,true);
+  await React.act(async()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));await flush();
+  assert.equal(submitted.address.cityId,1);assert.equal(submitted.address.line1,'100 Test Lane');assert.equal(submitted.phoneNumber,'5125550123');
+});
+test('report results offer CSV and print exports', async()=>{
+  const { AdminReportsPage } = await import('../src/pages/AdminReportsPage.jsx');
+  await mount(AdminReportsPage,async path=>path==='/admin/customers'?[]:{quarters:[{quarter:1,orderCount:1,salesAmount:'12.00'}]},'admin');
+  assert.match(document.body.textContent,/Download CSV/);assert.match(document.body.textContent,/Print \/ save PDF/);
+  let printed=false;window.print=()=>{printed=true;};await click('Print / save PDF');assert.equal(printed,true);
 });
