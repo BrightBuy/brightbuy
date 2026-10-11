@@ -304,23 +304,6 @@ npm --prefix client test
 | `client/src/pages/AdminFulfilmentPage.jsx` | React UI | Admin order dispatch, backorder allocation, and completion interface |
 | `server/test/inventory-fulfilment.test.js` | Test Suite | Deadlock prevention, and ACID verification tests |
 
-#### 4. Plain-English Summary & Viva Reference
-
-* **Core Focus:** Member 4 designed and implemented the **"Warehouse Brain" and "Order Delivery Engine"**, guaranteeing that stock counts are never oversold, orders progress through physical fulfillment stages, and every inventory movement is recorded in an immutable audit ledger.
-* **Key Pillars:**
-  1. **Zero Overselling (Concurrency Control):** Row-level pessimistic locking (`SELECT ... FOR UPDATE` sorted in ascending order) inside stored procedure `sp_apply_stock_change` eliminates race conditions and deadlocks when multiple customers check out simultaneously.
-  2. **Audit Ledger as Bank Statement:** Variants' stock is never updated directly. Every change is an entry in `inventory_movements`, and MySQL trigger `trg_stock_movement_apply` recalculates stock balances with transactional rollback on discrepancy.
-  3. **Order Fulfillment & COD Safeguard:** Full lifecycle progression (`confirmed` → `processing` → `shipped`/`ready_for_pickup` → `delivered`/`collected`) with Cash on Delivery (COD) cash-receipt verification before completing orders.
-  4. **Migration Runner Enhancement:** Extended `migrate.js` to run both legacy `.sql` scripts and dynamic `.mjs` routine modules for triggers and stored procedures.
-
-##### Quick Viva Q&A Guide
-
-| Question | Answer |
-| :--- | :--- |
-| **How did you prevent overselling?** | MySQL Stored Procedure with row-level pessimistic locking (`SELECT ... FOR UPDATE`) sorted by variant ID, guaranteeing atomic and deadlock-free transactions. |
-| **How do you audit inventory changes?** | Via an immutable `inventory_movements` ledger. An `AFTER INSERT` trigger recalculates the balance, blocking unauthorized or negative adjustments. |
-| **How does Cash on Delivery (COD) work?** | In the Admin Fulfilment screen, an order cannot transition to `delivered` unless the admin explicitly confirms physical cash receipt. |
-| **How are backordered items handled?** | Backorders are safely held until restocked, then allocated atomically across all line items via `/admin/orders/:id/allocate`. |
 
 ---
 
