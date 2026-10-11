@@ -102,7 +102,7 @@ The live production deployment is structured across modern, high-availability cl
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/Kamithaakash/BrightBuy.git
+   git clone https://github.com/BrightBuy/brightbuy.git
    cd BrightBuy
    ```
 
