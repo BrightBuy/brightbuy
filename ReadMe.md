@@ -3,19 +3,24 @@
 > **CS3043 / Database Systems Semester Project**  
 > A high-reliability digital commerce platform designed for retail inventory, atomic checkout, and order fulfillment across Texas.
 
-🌐 **Live Demo:** [https://brightbuy-seven.vercel.app/](https://brightbuy-seven.vercel.app/)
+🌐 **Live Demo:** [https://brightbuy-seven.vercel.app/](https://brightbuy-seven.vercel.app/)  
+☁️ **Cloud Deployment:**
+* **Frontend:** Hosted on [Vercel](https://vercel.com/) (React 19 + Vite SPA)
+* **Backend:** Hosted on [Vercel](https://vercel.com/) (Express 5 REST API Services)
+* **Database:** Hosted on [Aiven.io](https://aiven.io/) (Managed Oracle MySQL 8.0 with SSL)
 
 ---
 
 ## 📖 Table of Contents
 1. [Project Overview](#-project-overview)
-2. [Technology Stack](#-technology-stack)
-3. [Quick Start & Setup](#-quick-start--setup)
+2. [Cloud Architecture & Deployment](#-cloud-architecture--deployment)
+3. [Technology Stack](#-technology-stack)
+4. [Quick Start & Setup](#-quick-start--setup)
    - [Option A: Running with Docker (Recommended)](#option-a-running-with-docker-recommended)
    - [Option B: Running Locally (Node.js & MySQL)](#option-b-running-locally-nodejs--mysql)
-4. [Database Migrations & Seeding](#-database-migrations--seeding)
-5. [Testing & Verification](#-testing--verification)
-6. [Team Contributions](#-team-contributions)
+5. [Database Migrations & Seeding](#-database-migrations--seeding)
+6. [Testing & Verification](#-testing--verification)
+7. [Team Contributions](#-team-contributions)
    - [Member 1 — Catalogue & Product Hierarchy](#-member-1--catalogue--product-hierarchy)
    - [Member 2 — Accounts, Authentication & Cart](#-member-2--accounts-authentication--cart)
    - [Member 3 — Checkout, Payments & Cancellation](#-member-3--checkout-payments--cancellation)
@@ -38,16 +43,49 @@ BrightBuy is a consumer electronics and toys retail chain based in Texas. To res
 
 ---
 
+## ☁️ Cloud Architecture & Deployment
+
+The live production deployment is structured across modern, high-availability cloud platforms:
+
+```
+[ Customer / Admin Browser ]
+            │
+            ▼
+┌────────────────────────────────────────┐
+│             VERCEL EDGE                │
+│  ├── Frontend: React 19 + Vite (SPA)   │
+│  └── Backend: Express 5 REST API       │
+└──────────────────┬─────────────────────┘
+                   │
+            (SSL Encrypted)
+                   │
+                   ▼
+┌────────────────────────────────────────┐
+│          AIVEN CLOUD MYSQL             │
+│  ├── Managed Oracle MySQL 8.0          │
+│  ├── ACID Transactions & Row Locks     │
+│  └── Native Procedures, Triggers & DDL │
+└────────────────────────────────────────┘
+```
+
+| Component | Platform | Role & Configuration |
+| :--- | :--- | :--- |
+| **Frontend** | [Vercel](https://vercel.com/) | React 19 Single Page Application bundled with Vite 7, deployed globally on Vercel's Edge CDN with client-side SPA routing. |
+| **Backend API** | [Vercel](https://vercel.com/) | Express 5 REST API service mounted under `/api/*`, handling authentication, transactional cart operations, and admin workflows. |
+| **Database** | [Aiven.io](https://aiven.io/) | Managed Oracle MySQL 8.0 instance running in the cloud with TLS/SSL encryption, providing 100% full compatibility for MySQL stored procedures, triggers, and foreign keys. |
+
+---
+
 ## 🛠️ Technology Stack
 
 | Layer | Technologies | Purpose |
 | :--- | :--- | :--- |
 | **Frontend** | React 19, Vite 7, Vanilla CSS, React Router 7 | Responsive, high-performance user interface |
 | **Backend API** | Node.js (v22+), Express 5 | RESTful services, transactional business logic |
-| **Database** | Oracle MySQL 8.0 (InnoDB) | Relational schema, stored procedures, triggers, views, and functions |
+| **Database** | Oracle MySQL 8.0 (InnoDB) on Aiven.io | Relational schema, stored procedures, triggers, views, and functions |
 | **Containerization** | Docker, Docker Compose | Consistent local development and database isolation |
 | **Authentication** | JWT (JSON Web Tokens), bcrypt | Secure customer and administrative role separation |
-| **Deployment** | Vercel (Edge CDN), Aiven (Cloud MySQL 8) | Production cloud hosting |
+| **Cloud Hosting** | Vercel (Frontend & API) + Aiven (MySQL 8) | High-availability serverless cloud deployment |
 
 ---
 
@@ -264,7 +302,25 @@ npm --prefix client test
 | `server/src/routes/fulfilment.js` | API Route | `/admin/fulfilment`, `/admin/orders/:id/allocate`, `/admin/orders/:id/complete` |
 | `client/src/pages/AdminInventoryPage.jsx` | React UI | Admin stock adjustment and movement history interface |
 | `client/src/pages/AdminFulfilmentPage.jsx` | React UI | Admin order dispatch, backorder allocation, and completion interface |
-| `server/test/inventory-fulfilment.test.js` | Test Suite | 15+ automated concurrency, deadlock prevention, and ACID verification tests |
+| `server/test/inventory-fulfilment.test.js` | Test Suite | Deadlock prevention, and ACID verification tests |
+
+#### 4. Plain-English Summary & Viva Reference
+
+* **Core Focus:** Member 4 designed and implemented the **"Warehouse Brain" and "Order Delivery Engine"**, guaranteeing that stock counts are never oversold, orders progress through physical fulfillment stages, and every inventory movement is recorded in an immutable audit ledger.
+* **Key Pillars:**
+  1. **Zero Overselling (Concurrency Control):** Row-level pessimistic locking (`SELECT ... FOR UPDATE` sorted in ascending order) inside stored procedure `sp_apply_stock_change` eliminates race conditions and deadlocks when multiple customers check out simultaneously.
+  2. **Audit Ledger as Bank Statement:** Variants' stock is never updated directly. Every change is an entry in `inventory_movements`, and MySQL trigger `trg_stock_movement_apply` recalculates stock balances with transactional rollback on discrepancy.
+  3. **Order Fulfillment & COD Safeguard:** Full lifecycle progression (`confirmed` → `processing` → `shipped`/`ready_for_pickup` → `delivered`/`collected`) with Cash on Delivery (COD) cash-receipt verification before completing orders.
+  4. **Migration Runner Enhancement:** Extended `migrate.js` to run both legacy `.sql` scripts and dynamic `.mjs` routine modules for triggers and stored procedures.
+
+##### Quick Viva Q&A Guide
+
+| Question | Answer |
+| :--- | :--- |
+| **How did you prevent overselling?** | MySQL Stored Procedure with row-level pessimistic locking (`SELECT ... FOR UPDATE`) sorted by variant ID, guaranteeing atomic and deadlock-free transactions. |
+| **How do you audit inventory changes?** | Via an immutable `inventory_movements` ledger. An `AFTER INSERT` trigger recalculates the balance, blocking unauthorized or negative adjustments. |
+| **How does Cash on Delivery (COD) work?** | In the Admin Fulfilment screen, an order cannot transition to `delivered` unless the admin explicitly confirms physical cash receipt. |
+| **How are backordered items handled?** | Backorders are safely held until restocked, then allocated atomically across all line items via `/admin/orders/:id/allocate`. |
 
 ---
 
