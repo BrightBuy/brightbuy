@@ -268,7 +268,7 @@ export function AdminInventoryPage() {
                                                 </span>
                                             </td>
                                             <td>
-                                                <span className="badge">{v.active ? 'Active' : 'Inactive'}</span>
+                                                <span className={`badge inventory-status ${v.active ? 'inventory-status--active' : 'inventory-status--inactive'}`}>{v.active ? 'Active' : 'Inactive'}</span>
                                             </td>
                                             <td style={{ display: 'flex', gap: '0.5rem' }}>
                                                 <button className="secondary" disabled={busy} onClick={() => openAdjustment(v)}>

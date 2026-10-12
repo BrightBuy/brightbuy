@@ -18,6 +18,7 @@
 4. [Quick Start & Setup](#-quick-start--setup)
    - [Option A: Running with Docker (Recommended)](#option-a-running-with-docker-recommended)
    - [Option B: Running Locally (Node.js & MySQL)](#option-b-running-locally-nodejs--mysql)
+   - [Sample Demo Accounts](#-sample-accounts)
 5. [Database Migrations & Seeding](#-database-migrations--seeding)
 6. [Testing & Verification](#-testing--verification)
    - [Running Standard Workspace Tests](#running-standard-workspace-tests)
@@ -176,6 +177,18 @@ The live deployment topology runs across modern cloud hosting platforms:
      npm run dev:client
      ```
      *(Runs Vite development server inside `@brightbuy/client` on port 5173).*
+
+---
+
+### 🔑 Sample Accounts
+
+All pre-seeded demo accounts use the password **`BrightBuy123!`** and fictional `.test` email addresses:
+
+| Email | Role | Sample Records / Access |
+| :--- | :--- | :--- |
+| `nimal@example.test` | customer | Two addresses; pending and delivered orders |
+| `asha@example.test` | customer | One address; order ready for pickup |
+| `admin@example.test` | admin | Can view customers/all orders and advance statuses |
 
 ---
 

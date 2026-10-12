@@ -60,7 +60,10 @@ test('every seeded product and variant resolves to an existing product-specific 
       }
       return [{ insertId }];
     },
-    async query(sql) {
+    async query(sql, params = []) {
+      if (sql.includes('CALL sp_apply_stock_change')) {
+        return [[[{ id: nextId++, variant_id: params[0], change_qty: params[1], stock_after: params[1] }]]];
+      }
       return [sql.includes('categories') ? categories : attributes];
     },
   };

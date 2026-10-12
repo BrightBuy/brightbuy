@@ -36,12 +36,12 @@ export function createInventoryRoutes(db, requireAuthentication) {
                 v.stock,
                 p.is_active as active
             from variants v
-            join products p on v.product_id = p.id`;
+            join products p on v.product_id = p.id WHERE NOT (p.is_legacy = 1 AND p.is_active = 0)`;
 
         const params = [];
 
         if (lowStockOnly) {
-            sql += ` where v.stock <= ?`;
+            sql += ` AND v.stock <= ?`;
             params.push(threshold);
         }
 
