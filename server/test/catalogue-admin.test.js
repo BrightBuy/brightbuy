@@ -44,8 +44,8 @@ const db = {
     if (sql.includes('FROM attributes')) {
       return [[...attributes].sort((a, b) => a.name.localeCompare(b.name))];
     }
-    if (sql.includes('FROM products ORDER BY id DESC')) {
-      return [[...products].sort((a, b) => b.id - a.id)];
+    if (sql.includes('FROM products WHERE NOT (is_legacy = 1 AND is_active = 0) ORDER BY id DESC')) {
+      return [products.filter(p => !(p.is_legacy === 1 && p.is_active === 0)).sort((a, b) => b.id - a.id)];
     }
     return [[]];
   },

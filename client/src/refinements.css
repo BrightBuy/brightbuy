@@ -150,3 +150,20 @@ select:not([multiple])[size="1"] {
 @media (max-width: 600px) {
   .home-intro { padding-block: 0 16px; gap: 12px; }
 }
+.overview-card-action {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 20px;
+  min-height: 44px;
+}
+
+.badge.inventory-status--active {
+  color: #245b3a;
+  background: #eaf4ed;
+  border: 1px solid #c2dbc9;
+}
+.badge.inventory-status--inactive {
+  color: #8b3434;
+  background: #faeeee;
+  border: 1px solid #e7cccc;
+}

@@ -1,7 +1,11 @@
+import { seedVariantStock } from './seedStock.js';
 // Project product seed — M1 Milestone E
-// Creates electronics and toy categories, 8 attributes and 40+ active products.
+// Creates electronics and toy categories, attributes and a mixed-status sample catalogue.
 // Existing product SKUs and the project-v1 marker preserve administrator edits.
 // Run via: npm run seed:project (from server/)
+
+// Draft examples remain visible to admins, but are excluded from the shop.
+const inactiveSampleSkus = new Set(['APEX-PARTY-BOX', 'ORBIT-CHAIR-GT', 'PROBOOK-TAB-MINI']);
 
 export async function seedProjectData(connection) {
   const [seeded] = await connection.execute(
@@ -54,8 +58,8 @@ export async function seedProjectData(connection) {
 
     const [res] = await connection.execute(
       `INSERT INTO products (sku, name, description, brand, currency, is_active, is_legacy)
-       VALUES (?, ?, ?, ?, 'USD', 1, 0)`,
-      [sku, name, description, brand],
+       VALUES (?, ?, ?, ?, 'USD', ?, 0)`,
+      [sku, name, description, brand, inactiveSampleSkus.has(sku) ? 0 : 1],
     );
     const productId = res.insertId;
 
@@ -87,6 +91,7 @@ export async function seedProjectData(connection) {
         [productId, v.sku, v.name, v.price, isDefault, combinationKey],
       );
       const variantId = vRes.insertId;
+      await seedVariantStock(connection, sku, v.sku, variantId);
 
       // Insert attribute values
       for (const a of v.attrs || []) {

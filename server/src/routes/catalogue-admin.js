@@ -293,7 +293,7 @@ export function createCatalogueAdminRoutes(db, requireAuthentication) {
   router.get('/admin/products', requireAuthentication, requireAdmin, async (req, res) => {
     const [products] = await db.query(
       `SELECT id, name, description, sku, brand, currency, is_active AS isActive, is_legacy AS isLegacy
-       FROM products ORDER BY id DESC`,
+       FROM products WHERE NOT (is_legacy = 1 AND is_active = 0) ORDER BY id DESC`,
     );
     const fullProducts = [];
     for (const p of products || []) {
