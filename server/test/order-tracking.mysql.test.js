@@ -70,20 +70,37 @@ test(
       });
       await t.test('an existing catalogue seed still receives missing locations', async () => {
         // All rows here belong exclusively to this disposable test database.
-        await pool.query('DELETE FROM stores');
-        await pool.query('DELETE FROM cities');
-        await pool.execute('DELETE FROM schema_migrations WHERE version=?', ['locations-demo-v1']);
+        await inTransaction(pool, async connection => {
+          // Recreate an installation without location links; keep foreign keys enabled.
+          await connection.query('UPDATE addresses SET city_id=NULL');
+          await connection.query('DELETE FROM stores');
+          await connection.query('DELETE FROM cities');
+          await connection.execute('DELETE FROM schema_migrations WHERE version=?', ['locations-demo-v1']);
+        });
         await runSetup(pool, { seedProject: true });
         pool = mysql.createPool(config);
         const [[counts]] = await pool.query(
           'SELECT (SELECT COUNT(*) FROM cities) AS cities, (SELECT COUNT(*) FROM stores) AS stores',
         );
         assert.deepEqual(counts, { cities: 8, stores: 8 });
+        const [addresses] = await pool.query(
+          `SELECT a.id,c.name AS city,a.is_default FROM addresses a
+           JOIN cities c ON c.id=a.city_id WHERE a.id IN (1,2,3) ORDER BY a.id`,
+        );
+        assert.deepEqual(addresses, [
+          {id:1,city:'Houston',is_default:1},
+          {id:2,city:'Dallas',is_default:0},
+          {id:3,city:'Austin',is_default:1},
+        ], 'Reseeding repairs sample links and keeps one default per sample customer.');
+        await pool.query('UPDATE addresses SET is_default=0 WHERE id=1');
+        await pool.query('UPDATE addresses SET is_default=1 WHERE id=2');
         await pool.query("UPDATE cities SET is_main_city=0 WHERE name='Dallas'");
         await runSetup(pool, { seedProject: true });
         pool = mysql.createPool(config);
         const [[city]] = await pool.query("SELECT is_main_city FROM cities WHERE name='Dallas'");
         assert.equal(city.is_main_city, 0, 'Repeated shared seed preserves admin edits.');
+        const [[chosen]] = await pool.query('SELECT id FROM addresses WHERE customer_id=1 AND is_default=1');
+        assert.equal(chosen.id, 2, 'Repeated setup preserves a customer-selected default.');
       });
       const [[owner]] = await pool.query(
         "SELECT id FROM customers WHERE role='customer' ORDER BY id LIMIT 1",
