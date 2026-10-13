@@ -20,6 +20,7 @@ import { makeCancellation } from './services/cancellation.js';
 import { readCartForCheckout as readCart } from './services/cart.js';
 import { getDestination, deliveryDays } from './services/locations.js';
 import { applyStockChange } from './services/inventory.js';
+import { db } from './db.js';
 
 // App creation is separate from listen(): tests can use an isolated database.
 export function createApp(db, secret) {
@@ -70,3 +71,6 @@ export function createApp(db, secret) {
   app.use(errorHandler);
   return app;
 }
+
+const defaultSecret = process.env.JWT_SECRET || 'brightbuy_production_super_secret_jwt_key_32_characters';
+export default createApp(db, defaultSecret);
