@@ -1,3 +1,4 @@
+import { seedSampleOrders } from './seedSampleOrders.js';
 import { applyMigrations } from './migrate.js';
 import { seedDemoData } from './seed.js';
 import { seedProjectData } from './seedProject.js';
@@ -32,6 +33,7 @@ export async function runSetup(pool, { seedDemo = false, seedProject = false } =
       try {
         await seedLocations(connection);
         await seedProjectData(connection);
+        await seedSampleOrders(connection);
         await connection.commit();
       } catch (error) {
         await connection.rollback();

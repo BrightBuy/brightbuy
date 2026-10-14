@@ -167,3 +167,51 @@ select:not([multiple])[size="1"] {
   background: #faeeee;
   border: 1px solid #e7cccc;
 }
+
+
+/* Layout review: consistent space between panels, controls and content. */
+.admin-main .grid + .card, .admin-main .card + .card { margin-top: 24px; }
+.card > :first-child { margin-top: 0; }
+.card > :last-child { margin-bottom: 0; }
+.card > h2 + form { margin-top: 20px; }
+.admin-form > h2 { margin: 0; }
+.admin-form fieldset { min-width: 0; margin-inline: 0; }
+.admin-form legend { padding-inline: 6px; max-width: 100%; }
+.table-wrap { min-width: 0; }
+.admin-table code { white-space: nowrap; overflow-wrap: normal; }
+main button, main .button { max-width: 100%; }
+.actions, .form-actions, .variant-actions { align-items: center; gap: 12px; }
+.form-actions button, .actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.address-page { max-width: 800px; margin-inline: auto; }
+.address-page-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.address-page-heading h1 { margin: 0; }
+.address-page-heading > button { flex-shrink: 0; }
+.address-card-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; }
+.address-card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e3e7e1; }
+.address-card-actions button { padding: 10px 14px; min-height: 44px; }
+.inventory-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-bottom: 24px; }
+.inventory-filter-bar > label { margin: 0; }
+.inventory-filter-bar > label > input[type=number] { flex-shrink: 0; }
+.table-wrap > .report-export { margin: 0; padding: 16px; border-bottom: 1px solid #d7d7d7; }
+.report-filters { align-items: end; }
+.report-filters .report-hint { flex-basis: 100%; order: 2; margin: 0; }
+.report-filters input, .report-filters select { min-height: 48px; border-radius: 0; }
+.report-filters > button { min-height: 48px; }
+.locations-page select { border-radius: 0; }
+.order-tracking-grid section > h2 { margin-top: 0; }
+.order-tracking-grid section > p { margin-block: 8px; }
+.login form > .error, .login form > p { margin: 0; }
+@media (max-width: 760px) {
+  .admin-main > .subnav { flex-wrap: wrap; overflow: visible; gap: 8px; padding-bottom: 20px; }
+  .admin-main > .subnav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 12px; }
+  .table-wrap > .report-export { padding: 14px; gap: 10px; }
+}
+@media (max-width: 540px) {
+  .address-page-heading { align-items: flex-start; flex-direction: column; }
+  .address-page-heading > button { width: 100%; }
+  .address-card-actions button { flex: 1 1 auto; }
+  .report-export button { flex: 1 1 130px; }
+  .admin-main .card + .card, .admin-main .grid + .card { margin-top: 20px; }
+  .responsive-toolbar { align-items: flex-start; }
+}
+@media (max-width: 380px) { .form-actions > button { flex-basis: 100%; width: 100%; } }

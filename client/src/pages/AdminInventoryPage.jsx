@@ -114,7 +114,7 @@ export function AdminInventoryPage() {
             )}
 
 
-            <section className="card" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <section className="card inventory-filter-bar">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                     <input
                         type="checkbox"
@@ -149,7 +149,7 @@ export function AdminInventoryPage() {
                     <form onSubmit={handleAdjustSubmit}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '400px' }}>
                             <label>
-                                Quantity Delta (e.g. <code>+10</code> to add, <code>-5</code> to deduct):
+                                <span>Quantity change (e.g. <code>+10</code> to add, <code>-5</code> to deduct)</span>
                                 <input
                                     type="number"
                                     required
@@ -173,7 +173,7 @@ export function AdminInventoryPage() {
                                 />
                             </label>
 
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <div className="form-actions">
                                 <button type="submit" disabled={busy}>
                                     {busy ? 'Saving...' : adjustmentAttempt ? 'Retry same adjustment' : 'Apply Stock Change'}
                                 </button>
@@ -194,7 +194,7 @@ export function AdminInventoryPage() {
 
             {historyVariant && (
                 <article className="card" style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="responsive-toolbar">
                         <h2>Movement Audit History: {historyVariant.productTitle} ({historyVariant.title})</h2>
                         <button className="secondary" onClick={() => { historyRequest.current++; setHistoryVariant(null); }}>
                             Close History

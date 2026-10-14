@@ -1,7 +1,7 @@
 /**
  * Post-demo-seed reconciliation hook for Member 1 (Catalogue & Variants).
  *
- * Ensures that all legacy foundation products (IDs 1, 2, 3) and variants
+ * Ensures that legacy products identified by their missing SKU or legacy flag and variants
  * satisfy the project requirements without breaking the original demo seed:
  *
  * 1. Products:
@@ -18,6 +18,10 @@
  * This function is idempotent and safe to run multiple times.
  */
 export async function reconcileLegacyCatalogue(connection) {
+  const [products] = await connection.query(`
+    SELECT id, name, sku, is_legacy, currency, is_active FROM products ORDER BY id
+  `);
+  if (!products.some(p => !p.sku || p.is_legacy)) return;
   // 1. Ensure a legacy category exists for legacy products
   await connection.query(`
     INSERT IGNORE INTO categories (id, name, description)
@@ -25,12 +29,10 @@ export async function reconcileLegacyCatalogue(connection) {
   `);
 
   // 2. Reconcile legacy products
-  const [products] = await connection.query(`
-    SELECT id, name, sku, is_legacy, currency, is_active FROM products ORDER BY id
-  `);
+
 
   for (const product of products || []) {
-    if (product.id <= 3 || !product.sku || product.is_legacy) {
+    if (!product.sku || product.is_legacy) {
       const legacySku = product.sku || `LEGACY-PRD-${product.id}`;
       const safeId = Number(product.id);
       await connection.query(`
@@ -57,7 +59,7 @@ export async function reconcileLegacyCatalogue(connection) {
     ORDER BY product_id ASC, id ASC
   `);
 
-  const legacyIds = new Set(products.filter(p => p.id <= 3 || !p.sku || p.is_legacy).map(p=>p.id));
+  const legacyIds = new Set(products.filter(p => !p.sku || p.is_legacy).map(p=>p.id));
   const productVariantsMap = new Map();
   for (const v of variants || []) {
     if (!legacyIds.has(v.product_id)) continue;

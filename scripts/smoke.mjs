@@ -60,11 +60,16 @@ assert.equal(
   Number(order.body.data.total),
   order.body.data.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0),
 );
-assert.deepEqual((await call('/admin/orders', { headers: admin })).body.data.filter((order) => order.isLegacy).map((order) => order.id).sort((a, b) => a - b), [1, 2, 3]);
+assert.ok(
+  (await call('/admin/orders', { headers: admin })).body.data
+    .filter((order) => [1, 2, 3].includes(order.id))
+    .every((order) => !order.isLegacy),
+);
 const customers = (await call('/admin/customers', { headers: admin })).body.data;
-for (const email of ['nimal@example.test', 'asha@example.test']) assert.ok(customers.some((customer) => customer.email === email));
+for (const email of ['nimal@example.test', 'asha@example.test'])
+  assert.ok(customers.some((customer) => customer.email === email));
 // Verify the sample records and their published response types, not just HTTP 200.
-// Project catalogue products are active; legacy order fixtures remain unchanged.
+// Sample historical orders use the active project catalogue; later rebuilds preserve their snapshots.
 const variants = catalogue.body.data.flatMap((product) => product.variants);
 assert.ok(variants.length >= catalogue.body.data.length);
 for (const variant of variants) {
@@ -82,26 +87,26 @@ for (const [headers, customerId, expectedCount] of [
 ]) {
   const list = await call('/orders', { headers });
   assert.equal(list.status, 200);
-  const legacy = list.body.data.filter((order) => order.isLegacy);
-  assert.equal(legacy.length, expectedCount);
+  const samples = list.body.data.filter((order) => [1, 2, 3].includes(order.id));
+  assert.equal(samples.length, expectedCount);
   assert.ok(list.body.data.every((order) => order.customerId === customerId));
-  for (const summary of legacy) {
+  for (const summary of samples) {
     const detail = await call(`/orders/${summary.id}`, { headers });
     assert.equal(detail.status, 200);
     assert.match(detail.body.data.total, /^\d+\.\d{2}$/);
     assert.equal(detail.body.data.currency, 'USD');
     assert.equal(new Date(summary.createdAt).toISOString(), summary.createdAt);
-    // Foundation samples have no verified checkout/payment/fulfilment metadata.
-    // They stay readable, but must not advertise project lifecycle actions.
     for (const record of [summary, detail.body.data]) {
-      assert.equal(record.isLegacy, true);
-      assert.deepEqual(record.nextStatuses, []);
-      assert.equal(record.payment, null);
-      assert.equal(record.delivery, null);
-      assert.equal(record.stockState, null);
-      assert.equal(record.wasOutOfStock, null);
+      assert.equal(record.isLegacy, false);
+      assert.equal(record.payment.amount, record.total);
+      assert.equal(record.payment.status, record.id === 1 ? 'pending' : 'paid');
+      assert.equal(record.stockState, record.id === 3 ? 'consumed' : 'allocated');
+      assert.equal(record.wasOutOfStock, false);
+      if (record.fulfillment === 'delivery')
+        assert.match(record.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/);
+      else assert.equal(record.delivery.estimatedDate, null);
     }
-    assert.deepEqual(detail.body.data.history, []);
+    assert.equal(detail.body.data.history.at(-1).toStatus, summary.status);
     assert.ok(detail.body.data.items.length > 0);
     if (summary.fulfillment === 'pickup') assert.equal(summary.addressSnapshot, null);
     else assert.equal(typeof summary.addressSnapshot.recipient, 'string');
@@ -115,7 +120,7 @@ const rejected = await call('/admin/orders/1/status', {
   body: JSON.stringify({ status: 'not-a-status' }),
 });
 assert.equal(rejected.status, 409);
-assert.equal(rejected.body.error.code, 'LEGACY_ORDER_REQUIRES_MIGRATION');
+assert.equal(rejected.body.error.code, 'INVALID_STATUS_TRANSITION');
 assert.equal(rejected.body.error.requestId, rejected.requestId);
 
 // ── M1 catalogue smoke checks ─────────────────────────────────────────────
@@ -167,10 +172,20 @@ assert.equal((await call('/catalogue?pageSize=999')).status, 400);
 const firstProduct = cataloguePage.body.data.items[0];
 const productDetail = await call(`/products/${firstProduct.id}`);
 assert.equal(productDetail.status, 200);
-assert.equal(productDetail.body.data.id, firstProduct.id, 'Detail must return the requested product');
+assert.equal(
+  productDetail.body.data.id,
+  firstProduct.id,
+  'Detail must return the requested product',
+);
 assert.ok(Array.isArray(productDetail.body.data.variants), 'Product detail must include variants');
-assert.ok(Array.isArray(productDetail.body.data.categories), 'Product detail must include categories');
-assert.ok(productDetail.body.data.variants.length > 0, 'Active product must have at least one variant');
+assert.ok(
+  Array.isArray(productDetail.body.data.categories),
+  'Product detail must include categories',
+);
+assert.ok(
+  productDetail.body.data.variants.length > 0,
+  'Active product must have at least one variant',
+);
 assert.ok(
   productDetail.body.data.variants.some((v) => v.isDefault),
   'Product detail must include a default variant',
@@ -182,7 +197,10 @@ assert.equal((await call('/products/999999')).status, 404);
 // Admin catalogue reads — require authentication
 assert.equal((await call('/admin/products')).status, 401);
 // Category reads are public; category mutations require an administrator.
-for (const [headers, expectedStatus] of [[{}, 401], [customer, 403]]) {
+for (const [headers, expectedStatus] of [
+  [{}, 401],
+  [customer, 403],
+]) {
   const response = await call('/admin/categories', {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
@@ -206,7 +224,7 @@ assert.equal(adminAttributes.status, 200);
 assert.ok(adminAttributes.body.data.length >= 8, 'Admin attributes must have at least 8 entries');
 
 console.log(
-  'Application API contracts, project catalogue and legacy-order smoke checks passed. No records changed.',
+  'Application API contracts, project catalogue and sample-order smoke checks passed. No records changed.',
 );
 
 // Optional fresh-demo verification; ordinary smoke also works without checkout demos.
@@ -224,12 +242,25 @@ if (process.env.SMOKE_CHECKOUT_DEMOS === 'true') {
     assert.equal(order.isLegacy, false);
     assert.equal(order.currency, 'USD');
     assert.equal(order.total, scenario.shortage ? '20.00' : '10.00');
-    assert.equal(order.status, scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed');
-    assert.equal(order.payment.status, scenario.payment === 'card'
-      ? scenario.cancel ? 'refunded' : 'paid' : scenario.cancel ? 'void' : 'pending');
+    assert.equal(
+      order.status,
+      scenario.cancel ? 'cancelled' : scenario.shortage ? 'backordered' : 'confirmed',
+    );
+    assert.equal(
+      order.payment.status,
+      scenario.payment === 'card'
+        ? scenario.cancel
+          ? 'refunded'
+          : 'paid'
+        : scenario.cancel
+          ? 'void'
+          : 'pending',
+    );
     assert.equal(order.history.at(-1).toStatus, order.status);
     assert.equal(order.delivery.mode, scenario.mode);
-    if (order.fulfillment === 'delivery') assert.match(order.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/); else assert.equal(order.delivery.estimatedDate, null);
+    if (order.fulfillment === 'delivery')
+      assert.match(order.delivery.estimatedDate, /^\d{4}-\d{2}-\d{2}$/);
+    else assert.equal(order.delivery.estimatedDate, null);
   }
   console.log('Checkout demo API scenarios passed.');
 }

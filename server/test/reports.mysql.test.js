@@ -38,6 +38,9 @@ test(
       );
       await runSetup(pool, { seedDemo: true, seedProject: true });
       pool = mysql.createPool(config);
+      // Setup seeds sample checkout orders with the current timestamp. Keep those
+      // unrelated rows outside the years covered by the hand-calculated fixtures.
+      await pool.execute("UPDATE orders SET created_at='2024-01-01 12:00:00'");
       const [users] = await pool.query(
         "SELECT id FROM customers WHERE role='customer' ORDER BY id",
       );

@@ -23,7 +23,7 @@ import { applyStockChange } from './services/inventory.js';
 import { db } from './db.js';
 
 // App creation is separate from listen(): tests can use an isolated database.
-export function createApp(db, secret) {
+export function createApp(db, secret, { accountEmail } = {}) {
   if (typeof secret !== 'string' || secret.length < 32) {
     throw new Error('JWT_SECRET must contain at least 32 characters.');
   }
@@ -53,7 +53,7 @@ export function createApp(db, secret) {
     }
     res.json({ data: { status: 'ok', database: 'connected' } });
   });
-  app.use('/api', createAuthRoutes(db, secret, auth));
+  app.use('/api', createAuthRoutes(db, secret, auth, accountEmail));
   app.use('/api', createCatalogueRoutes(db));
   app.use('/api', createCatalogueAdminRoutes(db, auth));
   app.use('/api', createAccountRoutes(db, auth));

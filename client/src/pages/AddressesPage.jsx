@@ -143,8 +143,8 @@ export function AddressesPage() {
   if (error) return <><p className="error" role="alert">{error}</p><button onClick={loadData}>Retry</button></>;
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="address-page">
+      <div className="address-page-heading">
         <h1>Address Book</h1>
         {!isEditing && (
           <button disabled={busy || !cities.length} onClick={startAdd} className="button">
@@ -245,7 +245,7 @@ export function AddressesPage() {
               </p>
             )}
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+            <div className="form-actions">
               <button disabled={busy || !cities.length}>{busy ? 'Saving…' : 'Save Address'}</button>
               <button type="button" className="button secondary" disabled={busy} onClick={resetForm}>
                 Cancel
@@ -273,12 +273,12 @@ export function AddressesPage() {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 borderLeft: address.isDefault ? '4px solid #2563eb' : '1px solid #e2e8f0',
               }}
             >
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <div className="address-card-heading">
                   <strong>{address.recipient}</strong>
                   {address.isDefault && (
                     <span className="badge" style={{ background: '#dbeafe', color: '#1e40af' }}>
@@ -304,12 +304,12 @@ export function AddressesPage() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+              <div className="address-card-actions">
                 {!address.isDefault && address.isEligible && (
                   <button
                     disabled={busy} onClick={() => handleSetDefault(address.id)}
                     className="button secondary"
-                    style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
+
                   >
                     Set as Default
                   </button>
@@ -317,14 +317,14 @@ export function AddressesPage() {
                 <button
                   disabled={busy} onClick={() => startEdit(address)}
                   className="button secondary"
-                  style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}
+
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => handleDelete(address.id)}
                   className="button secondary"
-                  style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem', color: '#dc2626' }}
+                  style={{ color: '#dc2626' }}
                 >
                   Delete
                 </button>
