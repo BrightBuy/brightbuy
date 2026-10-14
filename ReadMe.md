@@ -347,7 +347,7 @@ Several test suites (`checkout.mysql.test.js`, `order-tracking.mysql.test.js`, `
 ---
 
 ### 💳 Member 3 — Checkout, Payments & Cancellation
-* **Student Name:** *[To be filled by Member 3]*
+* **Student Name:** **Abegunawardhana A.D.**
 * **Feature Branch:** `feature/checkout-payments`
 * **SRS Requirements Owned:**
   * **R06:** Multi-step checkout workflow with delivery and store pickup fulfillment options.
