@@ -170,7 +170,35 @@ select:not([multiple])[size="1"] {
 
 
 /* Layout review: consistent space between panels, controls and content. */
-.admin-main .grid + .card, .admin-main .card + .card { margin-top: 24px; }
+.admin-main > .grid + .card,
+.admin-main > .card + .card,
+.admin-main > section > .grid + .card,
+.admin-main > section > .card + .card {
+  margin-top: 24px;
+}
+
+.grid > .card,
+.grid > * {
+  margin-top: 0 !important;
+}
+
+/* Stat & admin cards in grids: uniform, clean, small size and equal height */
+.admin-main .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
+  gap: 20px;
+  align-items: stretch;
+}
+
+.admin-main .grid > .card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 120px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
 .card > :first-child { margin-top: 0; }
 .card > :last-child { margin-bottom: 0; }
 .card > h2 + form { margin-top: 20px; }
@@ -211,7 +239,10 @@ main button, main .button { max-width: 100%; }
   .address-page-heading > button { width: 100%; }
   .address-card-actions button { flex: 1 1 auto; }
   .report-export button { flex: 1 1 130px; }
-  .admin-main .card + .card, .admin-main .grid + .card { margin-top: 20px; }
+  .admin-main > .card + .card,
+  .admin-main > .grid + .card,
+  .admin-main > section > .card + .card,
+  .admin-main > section > .grid + .card { margin-top: 20px; }
   .responsive-toolbar { align-items: flex-start; }
 }
 @media (max-width: 380px) { .form-actions > button { flex-basis: 100%; width: 100%; } }
