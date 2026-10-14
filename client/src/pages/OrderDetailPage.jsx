@@ -1,3 +1,4 @@
+import { OrderItemImage } from '../components/OrderItemImage.jsx';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
@@ -143,11 +144,10 @@ export function OrderDetailPage() {
               </div>
               <h2>Items</h2>
               {order.items.map((item) => (
-                <div className="variant" key={item.id}>
-                  <span>
-                    {item.productName} · {item.variantName} × {item.quantity}
-                  </span>
-                  <span>{formatMoney(item.unitPrice, order.currency)} each</span>
+                <div className="order-item" key={item.id}>
+                  <OrderItemImage key={order.id+':'+item.id} orderId={order.id} item={item} />
+                  <div className="order-item-description"><strong>{item.productName}</strong><span>{item.variantName}</span><span>Quantity: {item.quantity}</span></div>
+                  <span className="order-item-price">{formatMoney(item.unitPrice, order.currency)} each</span>
                 </div>
               ))}
               <h2>Total: {formatMoney(order.total, order.currency)}</h2>

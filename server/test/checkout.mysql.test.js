@@ -1,3 +1,6 @@
+import express from 'express';
+import { createOrderRoutes } from '../src/routes/orders.js';
+import { errorHandler, ApiError } from '../src/errors.js';
 import { businessDate, addCalendarDays } from '../../shared/time.js';
 import { describe, test, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,6 +44,8 @@ describe('M3 real MySQL 8.4 integration (isolated generated database)', { skip: 
     }
   });
   beforeEach(async()=>{
+    await pool.query('DELETE FROM variant_images');
+    await pool.query('UPDATE products SET sku=NULL');
     for(const table of ['order_item_categories','order_cancellations','order_operations',
       'order_status_history','payments','deliveries','checkout_requests','inventory_movements',
       'order_items','orders','cart_items']) await pool.query(`DELETE FROM ${table}`);
@@ -68,6 +73,36 @@ describe('M3 real MySQL 8.4 integration (isolated generated database)', { skip: 
     assert.equal(await count('orders'),1);assert.equal(await count('inventory_movements'),2);
     assert.equal(await count('cart_items'),0);
     const [[cart]]=await pool.query('SELECT version FROM carts WHERE id=1');assert.equal(cart.version,4);
+  });
+  test('order images preserve uploaded and bundled variants and protect ownership',async()=>{
+    const original=Buffer.from('original uploaded image');
+    await pool.execute('INSERT INTO variant_images VALUES (?,?,?)',[1,'image/png',original]);
+    await pool.query("UPDATE products SET sku='BB-TOY-ROBOT' WHERE id=2");
+    const input=body(); const result=await checkout(pool,actor,input);
+    const [images]=await pool.query('SELECT oi.variant_id,i.* FROM order_item_images i JOIN order_items oi ON oi.id=i.order_item_id ORDER BY oi.variant_id');
+    assert.equal(images.length,2); assert.deepEqual(images[0].image_data,original);
+    assert.equal(images[1].mime_type,'image/webp'); assert.ok(images[1].image_data.length>100);
+    await pool.query('DELETE FROM variant_images');
+    await pool.query('UPDATE variants SET is_active=0');
+    const [[saved]]=await pool.execute('SELECT image_data FROM order_item_images WHERE order_item_id=?',[images[0].order_item_id]);assert.deepEqual(saved.image_data,original);
+    await checkout(pool,actor,input);assert.equal(await count('order_item_images'),2);
+    const app=express();app.use(createOrderRoutes(pool,(req,res,next)=>{if(!req.headers['x-test-user'])throw new ApiError(401,'UNAUTHENTICATED','Sign in');req.user={id:Number(req.headers['x-test-user']),role:req.headers['x-test-role']||'customer'};next();}));app.use(errorHandler);
+    const server=app.listen(0);await new Promise(r=>server.once('listening',r));
+    try {
+      const url='http://127.0.0.1:'+server.address().port+'/orders/'+result.data.id+'/items/'+images[0].order_item_id+'/image';
+      assert.equal((await fetch(url)).status,401);
+      assert.equal((await fetch(url,{headers:{'x-test-user':'2'}})).status,404);
+      for(const headers of [{'x-test-user':'1'},{'x-test-user':'3','x-test-role':'admin'}]){
+        const response=await fetch(url,{headers});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal((await response.json()).data.src,'data:image/png;base64,'+original.toString('base64'));
+      }
+      assert.equal((await fetch(url.replace('/items/','/items/999'),{headers:{'x-test-user':'1'}})).status,404);
+    }finally{await new Promise(r=>server.close(r));}
+  });
+  test('image snapshot is rolled back with a failed checkout',async()=>{
+    await pool.execute('INSERT INTO variant_images VALUES (?,?,?)',[1,'image/png',Buffer.from('test image')]);
+    const fail=makeCheckout({...dependencies,applyStockChange:async()=>{throw new Error('Stock failure');}});
+    await assert.rejects(fail(pool,actor,body()),/Stock failure/);
+    assert.equal(await count('order_item_images'),0);assert.equal(await count('order_items'),0);
   });
   test('decline persists exactly one audit and preserves cart/stock',async()=>{
     const input=body({paymentMethod:'card',simulationToken:'demo-declined'});

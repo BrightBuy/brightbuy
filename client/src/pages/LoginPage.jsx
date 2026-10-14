@@ -10,17 +10,20 @@ export function LoginPage() {
   const location = useLocation();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(Boolean(location.state?.registered));
   async function submit(event) {
     event.preventDefault();
     if (busy) return;
     setBusy(true);
     setError('');
+    setNeedsVerification(false);
     const form = new FormData(event.currentTarget);
     try {
       const user = await login(form.get('email'), form.get('password'));
       navigate(returnPath(user.role === 'customer' && guestCart().read().items.length ? '/cart' : location.state?.from, user.role), { replace: true });
     } catch (error) {
       setError(error.message);
+      setNeedsVerification(error.code === 'EMAIL_NOT_VERIFIED');
     } finally {
       setBusy(false);
     }
@@ -29,11 +32,11 @@ export function LoginPage() {
     <section className="login card">
       <p className="eyebrow">WELCOME BACK</p>
       <h1>Sign in</h1>
-      {location.state?.registered && <p role="status">Account created. Sign in to continue.</p>}
+      {location.state?.registered && <p role="status">Account created. Check your email to verify your account before signing in.</p>}
       <form onSubmit={submit}>
         <label>
           Email
-          <input name="email" defaultValue={location.state?.email || ''} type="email" autoComplete="username" required />
+          <input name="email" onChange={() => setNeedsVerification(false)} defaultValue={location.state?.email || ''} type="email" autoComplete="username" required />
         </label>
         <label>
           Password
@@ -50,8 +53,10 @@ export function LoginPage() {
             {error}
           </p>
         )}
+        {needsVerification && <p>Didn’t receive the email? <Link to="/resend-verification">Resend verification email</Link></p>}
         <button disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
+      <p><Link to="/forgot-password">Forgot password?</Link></p>
       <p>New to BrightBuy? <Link to="/register" state={{ from: location.state?.from }}>Create an account</Link>.</p><p>Demo accounts and setup instructions are in the project README.</p>
     </section>
   );

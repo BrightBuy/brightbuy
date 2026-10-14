@@ -382,3 +382,27 @@ test('catalogue pagination uses complete grid rows and keeps all products reacha
     assert.equal(document.querySelectorAll('.collection-card').length,12);
   } finally {dom.window.HTMLElement.prototype.scrollIntoView = original;}
 });
+
+test('verification link survives Strict Mode, is removed from URL and requires confirmation', async () => {
+  const {AccountRecoveryPage}=await import('../src/pages/AccountRecoveryPage.jsx');
+  const token='a'.repeat(64);window.history.replaceState(null,'','/verify-email#token='+token);
+  const calls=[];
+  globalThis.fetch=async(path,options)=>{calls.push({path,body:JSON.parse(options.body)});return Response.json({data:{message:'Email verified.'}});};
+  root=createRoot(document.getElementById('root'));
+  await React.act(async()=>root.render(h(React.StrictMode,null,h(MemoryRouter,null,h(AuthProvider,null,h(AccountRecoveryPage,{mode:'verify-email'}))))));
+  assert.equal(window.location.hash,'');assert.equal(calls.length,0);
+  await click('Verify email');assert.deepEqual(calls,[{path:'/api/auth/verify-email',body:{token}}]);
+  assert.match(document.body.textContent,/Email verified/);
+});
+
+test('order thumbnails load the saved image and keep a fallback for older orders', async () => {
+  const {OrderItemImage}=await import('../src/components/OrderItemImage.jsx');
+  const src='data:image/png;base64,aGVsbG8=';
+  const requests=[];
+  await mount(()=>h(OrderItemImage,{orderId:4,item:{id:8,productName:'Headphones',variantName:'Black'}}),async path=>{requests.push(path);return {src};});
+  assert.deepEqual(requests,['/orders/4/items/8/image']);assert.equal(document.querySelector('main img, #root img').getAttribute('src'),src);
+  assert.equal(document.querySelector('#root img').alt,'Headphones — Black');
+  await React.act(async()=>root.unmount());root=null;
+  await mount(()=>h(OrderItemImage,{orderId:1,item:{id:1,productName:'Old order',variantName:'Blue'}}),async()=>null);
+  assert.match(document.querySelector('#root img').src,/product-image-unavailable.svg/);
+});

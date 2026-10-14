@@ -1,3 +1,5 @@
+import { makeAccountRecovery } from '../services/account-recovery.js';
+import { createRecoveryRoutes } from './account-recovery.js';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { ApiError } from '../errors.js';
@@ -6,8 +8,10 @@ import { validateAddressInput } from '../services/addresses.js';
 import { inTransaction } from '../utils/transaction.js';
 import { TOKEN_OPTIONS } from '../middleware/auth.js';
 
-export function createAuthRoutes(db, secret, requireAuthentication) {
+export function createAuthRoutes(db, secret, requireAuthentication, emailOptions) {
   const router = Router();
+  const recovery = makeAccountRecovery(db, emailOptions);
+  router.use(createRecoveryRoutes(recovery));
 
   router.post('/auth/register', async (req, res) => {
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
@@ -67,8 +71,8 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
       await inTransaction(db, async (connection) => {
       const address = await validateAddressInput(connection, req.body.address);
       const [result] = await connection.execute(
-        `INSERT INTO customers (first_name, last_name, name, email, password_hash, phone_number, role)
-         VALUES (?, ?, ?, ?, ?, ?, 'customer')`,
+        `INSERT INTO customers (first_name, last_name, name, email, password_hash, phone_number, role, email_verified)
+         VALUES (?, ?, ?, ?, ?, ?, 'customer', 0)`,
         [firstName.trim(), lastName.trim(), combinedName, normalizedEmail, passwordHash, phone],
       );
       insertId = result.insertId;
@@ -92,6 +96,7 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
       throw err;
     }
 
+    recovery.request(normalizedEmail, 'verify').catch(() => console.error('[Email] Verification email could not be delivered. Check email configuration.'));
     res.status(201).json({
       data: {
         id: insertId,
@@ -125,7 +130,7 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
     const [users] = await db.execute(
       `SELECT id, name, email, role, password_hash,
               first_name AS firstName, last_name AS lastName,
-              phone_number AS phoneNumber, registered_at AS registeredAt
+              phone_number AS phoneNumber, registered_at AS registeredAt, email_verified, auth_version
        FROM customers WHERE email = ?`,
       [email.trim().toLowerCase()],
     );
@@ -133,8 +138,9 @@ export function createAuthRoutes(db, secret, requireAuthentication) {
     if (!user || !(await verifyPassword(password, user.password_hash))) {
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     }
+    if (user.email_verified === 0 || user.email_verified === false) throw new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Verify your email before signing in. Use Resend verification if you need a new link.');
     const { id, name, role, firstName, lastName, phoneNumber, registeredAt } = user;
-    const accessToken = jwt.sign({ role }, secret, {
+    const accessToken = jwt.sign({ role, version: user.auth_version ?? 0 }, secret, {
       algorithm: 'HS256',
       subject: String(id),
       issuer: TOKEN_OPTIONS.issuer,

@@ -36,6 +36,17 @@ export function createOrderRoutes(db, requireAuthentication) {
   router.get('/admin/orders', requireAuthentication, requireAdmin, async (req, res) => {
     res.json({ data: await trackingList(true) });
   });
+  router.get('/orders/:id/items/:itemId/image', requireAuthentication, async (req, res) => {
+    const orderId = positiveId(req.params.id);
+    const itemId = positiveId(req.params.itemId);
+    const [items] = await db.execute(
+      "SELECT oi.id,i.mime_type AS mimeType,i.image_data AS imageData FROM order_items oi JOIN orders o ON o.id=oi.order_id LEFT JOIN order_item_images i ON i.order_item_id=oi.id WHERE oi.id=? AND o.id=? AND (o.customer_id=? OR ?='admin')",
+      [itemId, orderId, req.user.id, req.user.role]);
+    if (!items.length) throw orderNotFound();
+    const item = items[0];
+    res.set('Cache-Control', 'no-store');
+    res.json({data:item.imageData ? {src:'data:'+item.mimeType+';base64,'+item.imageData.toString('base64')} : null});
+  });
   router.get('/orders/:id', requireAuthentication, async (req, res) => {
     const id = positiveId(req.params.id);
     const data = await inTransaction(db, async (connection) => {

@@ -1,3 +1,4 @@
+import { up as installOrderImages } from '../db/019-order-item-images.mjs';
 // TEST ONLY. Minimal M1/M2/M4/M5 contracts to exercise the real M3 SQL.
 // Never import this module from createApp or a production service.
 import { readFile } from 'node:fs/promises';
@@ -10,6 +11,8 @@ export async function installFixture(connection) {
     await connection.query(statement);
   }
   const prerequisites = [
+    'ALTER TABLE products ADD sku VARCHAR(100) NULL',
+    'CREATE TABLE variant_images (variant_id INT UNSIGNED PRIMARY KEY,mime_type VARCHAR(30),image_data MEDIUMBLOB)',
     "ALTER TABLE products ADD currency CHAR(3) NOT NULL DEFAULT 'USD', ADD is_active BOOLEAN NOT NULL DEFAULT 1, ADD is_legacy BOOLEAN NOT NULL DEFAULT 0",
     'ALTER TABLE variants ADD is_active BOOLEAN NOT NULL DEFAULT 1',
     'CREATE TABLE categories (id INT UNSIGNED PRIMARY KEY, name VARCHAR(100) NOT NULL) ENGINE=InnoDB',
@@ -54,6 +57,7 @@ export async function installFixture(connection) {
      RETURN IF(main_city,5,7)+IF(shortage,3,0)`,
   ];
   for (const sql of prerequisites) await connection.query(sql);
+  await installOrderImages(connection);
   await installCheckout(connection);
   await installCheckout(connection); // successful repeat must verify rather than recreate
   await connection.query("ALTER TABLE deliveries MODIFY estimated_date DATE NULL");

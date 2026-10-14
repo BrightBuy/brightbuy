@@ -152,3 +152,11 @@ test('reconcileLegacyCatalogue is idempotent when run repeatedly', async () => {
   assert.equal(variants.find((v) => v.id === 1).is_default, 1);
   assert.equal(variants.find((v) => v.id === 2).is_default, 0);
 });
+
+test('current catalogue products with low IDs are not reclassified as legacy', async () => {
+  const {connection,products,variants}=createMockDb();
+  for(const product of products){product.sku='CURRENT-'+product.id;product.is_legacy=0;}
+  const before=JSON.stringify({products,variants});
+  await reconcileLegacyCatalogue(connection);
+  assert.equal(JSON.stringify({products,variants}),before);
+});

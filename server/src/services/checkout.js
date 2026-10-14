@@ -1,3 +1,4 @@
+import { snapshotOrderImage } from './order-images.js';
 import { businessDate, addCalendarDays } from '../../../shared/time.js';
 import { ApiError } from '../errors.js';
 import { validateCheckout, checkoutFingerprint, MAX_VERSION } from '../utils/checkout-input.js';
@@ -77,6 +78,7 @@ export function makeCheckout({ readCart, getDestination, deliveryDays, applyStoc
            (order_id,variant_id,product_name,variant_name,quantity,unit_price)
            VALUES (?,?,?,?,?,?)`,
           [orderId, line.variantId, line.productName, line.variantName, line.quantity, line.unitPrice]);
+        await snapshotOrderImage(connection, item.insertId, line.variantId);
         for (const categoryId of line.categoryIds) {
           await connection.execute(
             'INSERT INTO order_item_categories (order_item_id,category_id) VALUES (?,?)',

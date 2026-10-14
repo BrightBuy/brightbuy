@@ -62,13 +62,13 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: docker compose up -d --wait --wait-timeout 300 m3-test-db
 
-      - name: Test checkout, payments and cancellation on MySQL
+      - name: Test checkout and account recovery on MySQL
         id: checkout_mysql
         if: ${{ !cancelled() && steps.database.outcome == 'success' }}
         run: >-
           docker compose run --rm --no-deps -T
           -e M3_TEST_MYSQL_URL=mysql://root:m3_test_only_password@m3-test-db:3306
-          api node --test server/test/checkout.mysql.test.js
+          api node --test server/test/checkout.mysql.test.js server/test/account-recovery.mysql.test.js
 
       - name: Test location schema constraints and migration retries
         id: locations_schema
@@ -193,7 +193,7 @@ jobs:
           required = {
               "workspace": "Workspace tests",
               "client": "Production client build",
-              "checkout_mysql": "Checkout, payments and cancellation",
+              "checkout_mysql": "Checkout, payments, cancellation and account recovery",
               "locations_schema": "Location schema and migration retries",
               "locations_api": "Location API and migrations",
               "delivery_days": "Delivery estimates and migrations",

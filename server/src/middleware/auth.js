@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { ApiError } from '../errors.js';
 
 export const USER_FIELDS =
-  'id, name, email, role, first_name AS firstName, last_name AS lastName, phone_number AS phoneNumber, registered_at AS registeredAt';
+  'id, name, email, role, first_name AS firstName, last_name AS lastName, phone_number AS phoneNumber, registered_at AS registeredAt, auth_version, email_verified';
 
 export const TOKEN_OPTIONS = {
   algorithms: ['HS256'],
@@ -34,6 +34,7 @@ export function createAuthMiddleware(db, secret) {
     ]);
     if (!users[0]) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
     const user = users[0];
+    if ((claims.version ?? 0) !== (user.auth_version ?? 0) || user.email_verified === 0 || user.email_verified === false) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to continue.');
     req.user = {
       id: user.id,
       name: user.name,

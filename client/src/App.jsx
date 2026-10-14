@@ -1,3 +1,4 @@
+import { AccountRecoveryPage } from './pages/AccountRecoveryPage.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { AboutPage, ContactPage } from './pages/InfoPages.jsx';
 import React from 'react';
@@ -37,6 +38,7 @@ export function App() {
             <Route path="contact" element={<ContactPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="login" element={<LoginPage />} />
+            {['forgot-password','reset-password','verify-email','resend-verification'].map(mode => <Route key={mode} path={mode} element={<AccountRecoveryPage key={mode} mode={mode} />} />)}
             <Route path="register" element={<RegisterPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route element={<ProtectedRoute />}>
