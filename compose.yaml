@@ -53,7 +53,7 @@ services:
       BREVO_SMTP_USER: ${BREVO_SMTP_USER:-}
       BREVO_SMTP_KEY: ${BREVO_SMTP_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:5173}
     ports:
       - '127.0.0.1:${API_HOST_PORT:-3000}:3000'
     depends_on:

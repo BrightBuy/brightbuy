@@ -49,6 +49,17 @@ afterEach(async () => {
   sessionStorage.clear();
 });
 
+test('registration mail failure shows the created account and resend action', async () => {
+  const { LoginPage } = await import('../src/pages/LoginPage.jsx');
+  root = createRoot(document.getElementById('root'));
+  await React.act(async () => root.render(h(MemoryRouter, {
+    initialEntries: [{pathname: '/login', state: {registered: true, verificationEmailSent: false, email: 'customer@example.test'}}],
+  }, h(AuthProvider, null, h(LoginPage)))));
+  assert.match(document.querySelector('[role="status"]').textContent, /account was created, but we could not send/);
+  assert.ok(document.querySelector('a[href="/resend-verification"]'));
+  assert.equal(document.querySelector('input[name="email"]').value, 'customer@example.test');
+});
+
 test('inventory displays the unwrapped movement records', async () => {
   await mount(AdminInventoryPage, async (path) => path.includes('stock-movements')
     ? [{ id: 1, changeQty: 5, stockAfter: 5, movementType: 'adjustment', reason: 'Restock proof', createdAt: '2026-10-07T10:00:00Z' }]

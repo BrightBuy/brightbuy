@@ -32,7 +32,9 @@ export function LoginPage() {
     <section className="login card">
       <p className="eyebrow">WELCOME BACK</p>
       <h1>Sign in</h1>
-      {location.state?.registered && <p role="status">Account created. Check your email to verify your account before signing in.</p>}
+      {location.state?.registered && <p role="status">{location.state.verificationEmailSent === false
+        ? 'Your account was created, but we could not send the verification email. Use Resend verification email below to try again.'
+        : 'Account created. Check your email to verify your account before signing in.'}</p>}
       <form onSubmit={submit}>
         <label>
           Email

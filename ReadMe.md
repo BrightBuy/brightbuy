@@ -24,11 +24,11 @@
    - [Running Standard Workspace Tests](#running-standard-workspace-tests)
    - [Running Opt-in MySQL Integration Tests](#running-opt-in-mysql-integration-tests)
 7. [Team Contributions](#-team-contributions)
-   - [Member 1 — Catalogue & Product Hierarchy](#-member-1--catalogue--product-hierarchy)
-   - [Member 2 — Accounts, Authentication & Cart](#-member-2--accounts-authentication--cart)
-   - [Member 3 — Checkout, Payments & Cancellation](#-member-3--checkout-payments--cancellation)
-   - [Member 4 — Inventory, Fulfilment & Migration Engine](#-member-4--inventory-fulfilment--migration-engine)
-   - [Member 5 — Locations, Delivery Days & Management Reports](#-member-5--locations-delivery-days--management-reports)
+   - [Ajay J — Catalogue & Product Hierarchy](#-ajay-j--catalogue--product-hierarchy)
+   - [Hettiarachchi U.O. — Accounts, Authentication & Cart](#-hettiarachchi-uo--accounts-authentication--cart)
+   - [Abegunawardhana A.D. — Checkout, Payments & Cancellation](#-abegunawardhana-ad--checkout-payments--cancellation)
+   - [Galagedara G.K.A.T — Inventory, Fulfilment & Migration Engine](#-galagedara-gkat--inventory-fulfilment--migration-engine)
+   - [Madhushani V.P.O. — Locations, Delivery Days & Management Reports](#-madhushani-vpo--locations-delivery-days--management-reports)
 
 ---
 
@@ -266,228 +266,45 @@ Several test suites (`checkout.mysql.test.js`, `order-tracking.mysql.test.js`, `
 
 ---
 
-### 📦 Member 1 — Catalogue & Product Hierarchy
-* **Student Name:** *[To be filled by Member 1]*
+### 📦 Ajay J — Catalogue & Product Hierarchy
 * **Feature Branch:** `feature/catalogue-variants`
-* **SRS Requirements Owned:**
-  * **R01:** Product hierarchy with category tree, attributes, and variant-level pricing and SKU assignments.
-  * **R02:** Product search, multi-attribute filtering, and real-time catalogue availability display.
-
-#### 1. Core Architectural Deliverables
-* **Hierarchical Catalogue Schema (`server/db/004-catalogue.mjs`):**
-  * Modeled `categories`, `products`, `product_categories`, `attributes`, `attribute_values`, and `variants`.
-  * Designed many-to-many relationship structures allowing products to exist in multiple subcategories.
-  * Configured cascading delete protections and foreign key constraints on product lines.
-* **Variant & Image Management (`server/db/012-product-images.sql`, `013-variant-images.sql`):**
-  * Added image metadata tables supporting primary and gallery visual assets per variant.
-* **Catalogue Query Service (`server/src/services/catalogue.js`):**
-  * Implemented optimized join queries to fetch product metadata, attribute matrices, and live stock levels.
-  * Built admin services for creating, modifying, and deactivating categories, products, and SKUs.
-
-#### 2. User Interfaces
-* **Public Catalogue & Product Pages (`client/src/pages/ProductsPage.jsx`, `ProductDetailPage.jsx`):**
-  * Responsive product grid with category, price range, and attribute filtering.
-  * Dynamic variant selector updating product pricing, stock availability badges, and SKU dynamically.
-* **Admin Catalogue Management (`client/src/pages/AdminCataloguePage.jsx`):**
-  * Management dashboard for adding products, managing variants, and uploading image URLs.
-
-#### 3. Summary of Files Created & Modified by Member 1
-| File | Type | Description |
-| :--- | :--- | :--- |
-| `server/db/004-catalogue.mjs` | Migration | Schema definitions for categories, products, and variants |
-| `server/src/services/catalogue.js` | Business Logic | Catalogue retrieval, filtering, and admin mutation services |
-| `server/src/routes/catalogue.js` | API Route | Public `/api/catalogue` browsing endpoints |
-| `server/src/routes/catalogue-admin.js` | API Route | `/admin/catalogue` category and product management endpoints |
-| `client/src/pages/ProductsPage.jsx` | React UI | Public product browsing with search and category filters |
-| `client/src/pages/ProductDetailPage.jsx` | React UI | Variant selection and dynamic stock/pricing display |
-| `client/src/pages/AdminCataloguePage.jsx` | React UI | Category and product administration interface |
-| `server/test/catalogue.test.js` | Test Suite | Unit tests for catalogue filtering and retrieval logic |
+* **Contribution:** Designed and implemented the hierarchical product catalogue schema (categories, products, attributes, variants, and image mappings). Developed backend querying and filtering services with stock availability tracking, along with public browsing pages (`ProductsPage`, `ProductDetailPage`) and the administrative catalogue management interface.
 
 ---
 
-### 👤 Member 2 — Accounts, Authentication & Cart
-* **Student Name:** *[To be filled by Member 2]*
+### 👤 Hettiarachchi U.O. — Accounts, Authentication & Cart
 * **Feature Branch:** `feature/customers-cart`
-* **SRS Requirements Owned:**
-  * **R03:** Customer account registration, profile management, and secure password hashing.
-  * **R04:** Persistent shopping cart with guest-to-customer cart merge on login.
-  * **R05:** Multi-address management for customer delivery destinations.
-
-#### 1. Core Architectural Deliverables
-* **Account & Authentication System (`server/src/routes/auth.js`):**
-  * Password hashing utilizing `bcrypt` with salt rounds.
-  * JWT generation with role payloads (`customer`, `admin`) and validation middleware (`requireAuth`, `requireAdmin`).
-* **Cart Persistence & Merging (`server/db/005-accounts-cart.mjs`, `014-guest-cart-merges.sql`):**
-  * Persistent database carts (`carts`, `cart_items`) tied to `customer_id`.
-  * Optimistic version column (`version`) on carts to detect concurrent tab updates.
-  * Automated migration merging guest local storage cart items into customer cart records upon sign-in.
-* **Customer Address Book (`server/src/services/addresses.js`):**
-  * Multiple shipping addresses per customer linked to Texas city records.
-
-#### 2. User Interfaces
-* **Authentication Screens (`client/src/pages/LoginPage.jsx`, `RegisterPage.jsx`):**
-  * Registration and login forms with client-side validation and JWT session handling.
-* **Cart & Profile Pages (`client/src/pages/CartPage.jsx`, `ProfilePage.jsx`, `AddressesPage.jsx`):**
-  * Interactive cart with quantity adjustments, subtotal calculations, and out-of-stock item indicators.
-  * Address management interface allowing customers to add, edit, and set default shipping locations.
-
-#### 3. Summary of Files Created & Modified by Member 2
-| File | Type | Description |
-| :--- | :--- | :--- |
-| `server/db/005-accounts-cart.mjs` | Migration | Schema for customers, addresses, carts, and cart items |
-| `server/src/services/cart.js` | Business Logic | Cart CRUD operations and guest-cart merging logic |
-| `server/src/services/addresses.js` | Business Logic | Customer address book management |
-| `server/src/routes/auth.js` | API Route | `/api/auth/register` and `/api/auth/login` endpoints |
-| `server/src/routes/cart.js` | API Route | `/api/cart` item manipulation endpoints |
-| `client/src/pages/LoginPage.jsx` | React UI | Customer and administrator authentication interface |
-| `client/src/pages/CartPage.jsx` | React UI | Persistent cart view with quantity selectors |
-| `client/src/pages/AddressesPage.jsx` | React UI | Customer shipping address management |
-| `server/test/customers-cart.test.js` | Test Suite | Unit tests for cart additions, limits, and authentication |
+* **Contribution:** Built customer authentication and account management using bcrypt password hashing and JWT sessions. Implemented persistent database shopping carts with guest-to-customer cart merging upon sign-in, and created the customer multi-address shipping book integrated with Texas city validation.
 
 ---
 
-### 💳 Member 3 — Checkout, Payments & Cancellation
-* **Student Name:** **Abegunawardhana A.D.**
+### 💳 Abegunawardhana A.D. — Checkout, Payments & Cancellation
 * **Feature Branch:** `feature/checkout-payments`
-* **SRS Requirements Owned:**
-  * **R06:** Multi-step checkout workflow with delivery and store pickup fulfillment options.
-  * **R07:** Atomic order creation and inventory decrement coordination during checkout.
-  * **R10:** Payment handling supporting Card payment simulation and Cash on Delivery (COD).
-  * **R11:** Order lifecycle tracking, status history, and customer order cancellation.
-
-#### 1. Core Architectural Deliverables
-* **Checkout Transaction Engine (`server/src/services/checkout.js`):**
-  * Orchestrates atomic checkout execution inside MySQL transactions (`BEGIN ... COMMIT`).
-  * Integrates cart validation, destination verification, stock deduction, and order record creation.
-* **Idempotent Checkout Protection (`checkout_requests` table in `007-checkout-fulfilment.mjs`):**
-  * Stores unique `request_key` UUIDs to prevent double billing or duplicate order placement on client retry.
-* **Order Cancellation & Status Workflow (`server/src/services/cancellation.js`):**
-  * Enforces cancellation policies (orders can be cancelled only before entering `shipped` or `ready_for_pickup` status).
-  * Automatically coordinates inventory restock via compensating movement records upon cancellation.
-
-#### 2. User Interfaces
-* **Checkout Interface (`client/src/pages/CheckoutPage.jsx`):**
-  * Fulfillment selection (Delivery vs. Store Pickup) and address/store dropdowns.
-  * Payment method selector (Credit Card simulation with modal vs. Cash on Delivery).
-* **Order History & Tracking (`client/src/pages/OrdersPage.jsx`, `OrderDetailPage.jsx`):**
-  * Customer order tracking with visual timeline, delivery date estimations, and cancellation button.
-
-#### 3. Summary of Files Created & Modified by Member 3
-| File | Type | Description |
-| :--- | :--- | :--- |
-| `server/db/007-checkout-fulfilment.mjs` | Migration | Schema for orders, order items, and checkout requests |
-| `server/src/services/checkout.js` | Business Logic | Atomic checkout transaction coordinator |
-| `server/src/services/cancellation.js` | Business Logic | Order cancellation and restock workflow |
-| `server/src/routes/checkout.js` | API Route | `/api/checkout` submission endpoint |
-| `server/src/routes/orders.js` | API Route | Customer order tracking and cancellation endpoints |
-| `client/src/pages/CheckoutPage.jsx` | React UI | Multi-step checkout form with payment options |
-| `client/src/pages/OrderDetailPage.jsx` | React UI | Order status progression view and cancellation actions |
-| `server/test/checkout.mysql.test.js` | Test Suite | Opt-in MySQL integration tests for concurrent checkouts |
+* **Contribution:** Engineered the atomic checkout transaction coordinator ensuring inventory deductions and order creation happen ACID-compliantly without overselling. Added idempotent checkout protection (`checkout_requests`) to prevent duplicate submissions, payment simulation (Card & COD), and the customer order tracking and cancellation lifecycle with automatic inventory restock.
 
 ---
 
-### 🏭 Member 4 — Inventory, Fulfilment & Migration Engine
-* **Student Name:** **Galagedara G.K.A.T**
+### 🏭 Galagedara G.K.A.T — Inventory, Fulfilment & Migration Engine
 * **Feature Branch:** `feature/inventory-fulfilment`
-* **SRS Requirements Owned:**
-  * **R01:** Central warehouse inventory management and variant stock balance tracking.
-  * **R07:** Concurrency control and atomic stock decrement without overselling.
-  * **R08:** Order fulfillment completion workflows for both delivery and store pickup modes.
-  * **R09:** Cash on Delivery (COD) physical cash collection verification.
-  * **R16:** Primary/Foreign key constraints, indexing, and ACID transaction safety.
-  * **R17:** Stored procedures, triggers, and automated database-level constraint enforcement.
-
-#### 1. Core Architectural Deliverables
-* **Upgraded Database Migration Runner (`server/src/database/migrate.js`):**
-  * Extended the migration engine to support both traditional `.sql` scripts and dynamic `.mjs` modules.
-  * Allows execution of multi-statement stored procedures and triggers without parser errors caused by semicolon splitters.
-  * Implemented version tracking in `schema_migrations` with execution timestamps.
-* **Audit-Logged Inventory Engine (`server/db/006-inventory.mjs`):**
-  * **`inventory_movements` Table:** Immutable audit ledger recording every inventory change (`sale`, `adjustment`, `allocation`, `cancellation`) with admin ID, timestamp, and unique `reference_key`.
-  * **Stored Procedure `sp_apply_stock_change`:**
-    * Acquires row-level pessimistic locks (`SELECT stock FROM variants WHERE id = ... FOR UPDATE`) to serialize updates and mitigate race conditions during high concurrency.
-    * Validates non-negative stock outcomes before inserting movement records; aborts if stock is insufficient.
-    * Replay-safe via unique `reference_key` checks to prevent duplicate adjustments on network retries.
-  * **Trigger `trg_stock_movement_apply`:**
-    * Automatically fires `AFTER INSERT` on `inventory_movements` to update `variants.stock`.
-    * Validates that the resulting stock balance is non-negative; raises a `SQLSTATE '45000'` exception if an invalid state occurs.
-* **Whole-Order Backorder Allocation (`server/src/services/fulfilment.js`):**
-  * Enforces an all-or-nothing allocation policy: backordered orders allocate only when all line items have available stock.
-  * Sorts line items in ascending order of `variant_id` (`ORDER BY variant_id ASC`) prior to lock acquisition to reduce deadlock risk during concurrent allocations.
-* **Order Fulfillment Progression & COD Verification (`POST /admin/orders/:id/complete`):**
-  * Manages transition through fulfillment stages (`confirmed` → `processing` → `shipped`/`ready_for_pickup` → `delivered`/`collected`).
-  * Enforces fulfillment mode rules: delivery orders complete as `delivered`; store pickup orders complete as `collected`.
-  * Enforces cash verification: orders marked Cash on Delivery require explicit confirmation of cash collection before completing.
-
-#### 2. User Interfaces
-* **Admin Inventory Dashboard (`client/src/pages/AdminInventoryPage.jsx`):**
-  * Live stock view for all variants with low-stock warnings.
-  * Manual stock adjustment modal with required reason notes and client-generated UUID idempotency keys.
-  * History drawer displaying the chronological audit ledger for any variant.
-* **Admin Fulfilment Dashboard (`client/src/pages/AdminFulfilmentPage.jsx`):**
-  * Queue filterable by fulfillment mode, order status, and stock allocation state.
-  * Dispatch actions (`Mark Processing`, `Ship`, `Ready for Pickup`, `Allocate Stock`).
-  * Order completion modal with mandatory Cash on Delivery confirmation checkbox.
-
-#### 3. Summary of Files Created & Modified by Member 4
-| File | Type | Description |
-| :--- | :--- | :--- |
-| `server/db/006-inventory.mjs` | Migration | Schema for `inventory_movements`, procedure `sp_apply_stock_change`, trigger `trg_stock_movement_apply` |
-| `server/src/database/migrate.js` | Core Runner | Migration engine supporting both `.sql` and `.mjs` modules |
-| `server/src/services/inventory.js` | Business Logic | Transactional stock adjustment and movement query service |
-| `server/src/services/fulfilment.js` | Business Logic | Backorder stock allocation and order dispatch workflows |
-| `server/src/routes/inventory.js` | API Route | `/admin/inventory` stock inspection and adjustment endpoints |
-| `server/src/routes/fulfilment.js` | API Route | `/admin/fulfilment` order allocation and completion endpoints |
-| `client/src/pages/AdminInventoryPage.jsx` | React UI | Real-time stock management and audit history interface |
-| `client/src/pages/AdminFulfilmentPage.jsx` | React UI | Order queue, dispatch progression, and COD confirmation modal |
-| `server/test/inventory-fulfilment.test.js` | Test Suite | Unit and concurrency tests for stock adjustments and allocations |
+* **Contribution:** Developed the database migration runner supporting procedural `.mjs` scripts. Designed the audit-logged inventory engine with pessimistic row-locking (`sp_apply_stock_change`) and balance integrity triggers (`trg_stock_movement_apply`), whole-order backorder allocation with deadlock prevention, and administrative order fulfillment progression with COD cash collection verification.
 
 ---
 
-### 📊 Member 5 — Locations, Delivery Days & Management Reports
-* **Student Name:** *[To be filled by Member 5]*
+### 📊 Madhushani V.P.O. — Locations, Delivery Days & Management Reports
 * **Feature Branch:** `feature/locations-reports`
-* **SRS Requirements Owned:**
-  * **R12:** Destination management covering Texas main cities, other regional cities, and physical store locations.
-  * **R13:** Deterministic delivery time calculation stored function `fn_delivery_days(is_main_city, was_out_of_stock)`.
-  * **R14/R15:** Five specialized analytical management SQL reports and administrative reporting dashboard.
-
-#### 1. Core Architectural Deliverables
-* **Locations Schema & Destinations (`server/db/003-locations.mjs`):**
-  * Created `cities` table with `is_main_city` classification (Houston, Dallas, Austin, San Antonio classified as main cities).
-  * Created `stores` table referencing cities for customer in-store pickup options.
-* **Deterministic Delivery Stored Function (`server/db/009-delivery-days.mjs`):**
-  * Implemented MySQL function `fn_delivery_days(is_main_city, was_out_of_stock)`:
-    * Returns **5 days** for Main Cities and **7 days** for Regional Cities.
-    * Adds **+3 days** if items were out of stock (backordered) at the time of order placement.
-* **Analytical Management Reports Engine (`server/src/services/reports.js`, `server/db/008-report-indexes.mjs`):**
-  * Created optimized composite indexes for grouping and aggregation queries.
-  * Implemented the 5 required management SQL reports:
-    1. **Quarterly Sales Report:** Aggregates revenue, order volume, and average order value grouped by quarter for a given year.
-    2. **Top-Selling Products:** Identifies top items by units sold and revenue within a specified date range.
-    3. **Category-Wise Demand:** Groups sales volume and revenue by product categories.
-    4. **Delivery Time Estimates:** Analyzes pending orders, expected delivery dates, and delayed fulfillment trends.
-    5. **Customer Order Summaries:** Summarizes order frequency, total spending, and payment completion status by customer.
-
-#### 2. User Interfaces
-* **Locations Management Interface (`client/src/pages/AdminLocationsPage.jsx`):**
-  * Allows administrators to configure active delivery cities and maintain physical pickup store locations.
-* **Management Reports Dashboard (`client/src/pages/AdminReportsPage.jsx`):**
-  * Interactive reporting view with date filters, quarterly breakdowns, and summary data tables.
-
-#### 3. Summary of Files Created & Modified by Member 5
-| File | Type | Description |
-| :--- | :--- | :--- |
-| `server/db/003-locations.mjs` | Migration | Schema definitions for Texas cities and pickup stores |
-| `server/db/009-delivery-days.mjs` | Migration | Stored function `fn_delivery_days(is_main_city, was_out_of_stock)` |
-| `server/db/008-report-indexes.mjs` | Migration | Performance indexes for quarterly and category analytical reports |
-| `server/src/services/locations.js` | Business Logic | City classification and delivery estimate service |
-| `server/src/services/reports.js` | Business Logic | Analytical report query generation and data formatting |
-| `server/src/routes/locations.js` | API Route | `/api/locations` city and pickup store endpoints |
-| `server/src/routes/reports.js` | API Route | `/admin/reports` management reporting endpoints |
-| `client/src/pages/AdminLocationsPage.jsx` | React UI | Administrative management of cities and pickup stores |
-| `client/src/pages/AdminReportsPage.jsx` | React UI | Visual reporting dashboard for the 5 analytical business queries |
-| `server/test/delivery-days.test.js` | Test Suite | Unit tests validating deterministic outputs of `fn_delivery_days` |
-| `server/test/reports.test.js` | Test Suite | Unit tests for management reporting aggregations |
+* **Contribution:** Modeled the Texas locations database (main cities, regional cities, pickup stores) and implemented the deterministic delivery calculation stored function `fn_delivery_days`. Designed composite performance indexes and implemented the 5 analytical business management reports (Quarterly Sales, Top Products, Category Demand, Delivery Timelines, Customer Summaries) with an interactive admin dashboard.
 
 ---
+
+### 📋 Summary Matrix of Contributions
+
+| Contributor | Functional Area | Core Responsibilities & Deliverables | Primary Files |
+| :--- | :--- | :--- | :--- |
+| **Ajay J** | Catalogue & Variants | Category tree, dynamic attributes, stock display | `server/src/services/catalogue.js`, `ProductsPage.jsx` |
+| **Hettiarachchi U.O.** | Auth & Cart | JWT auth, persistent cart, guest merge, address book | `server/src/routes/auth.js`, `cart.js`, `CartPage.jsx` |
+| **Abegunawardhana A.D.** | Checkout & Orders | Atomic checkout, idempotency, payments, cancellation | `server/src/services/checkout.js`, `CheckoutPage.jsx` |
+| **Galagedara G.K.A.T** | Inventory & Fulfilment | Movement audit ledger, row locks, backorders, migrations | `migrate.js`, `inventory.js`, `fulfilment.js` |
+| **Madhushani V.P.O.** | Locations & Reports | Delivery estimation function (`fn_delivery_days`), 5 SQL reports | `locations.js`, `reports.js`, `AdminReportsPage.jsx` |
+
+---
+
