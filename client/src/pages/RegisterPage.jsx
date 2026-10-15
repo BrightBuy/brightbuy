@@ -41,7 +41,7 @@ export function RegisterPage() {
     setBusy(true);
 
     try {
-      await api('/auth/register', {
+      const result = await api('/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           firstName,
@@ -53,7 +53,7 @@ export function RegisterPage() {
         }),
       });
       // Navigate to login after successful registration
-      navigate('/login', { state: { registered: true, email, from: location.state?.from } });
+      navigate('/login', { state: { registered: true, verificationEmailSent: result.verificationEmailSent, email, from: location.state?.from } });
     } catch (err) {
       setError(err.message || 'Registration failed.');
     } finally {

@@ -9,8 +9,9 @@ const invalid = () => new ApiError(400, 'INVALID_ACCOUNT_LINK', 'This link is in
 export function makeAccountRecovery(db, {send = sendAccountEmail, appUrl = process.env.PUBLIC_APP_URL} = {}) {
   return {
     async request(email, purpose) {
+      const resolvedAppUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
       const token = randomBytes(32).toString('hex');
-      const link = accountLink(purpose, token, appUrl);
+      const link = accountLink(purpose, token, resolvedAppUrl);
       const recipient = await inTransaction(db, async connection => {
         const [users] = await connection.execute('SELECT id, name, email, email_verified FROM customers WHERE email = ? FOR UPDATE', [email]);
         const user = users[0];
@@ -22,12 +23,16 @@ export function makeAccountRecovery(db, {send = sendAccountEmail, appUrl = proce
         return user;
       });
       if (recipient) {
-        try { await send({to:recipient.email,...buildAccountEmail({purpose,name:recipient.name,link})}); }
+        try {
+          await send({to:recipient.email,...buildAccountEmail({purpose,name:recipient.name,link})});
+          return true;
+        }
         catch (error) {
           await db.execute('DELETE FROM account_tokens WHERE token_hash=?', [tokenHash(token)]);
           throw error;
         }
       }
+      return false;
     },
     async consume(token, purpose, password) {
       if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) throw invalid();

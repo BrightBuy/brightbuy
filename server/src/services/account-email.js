@@ -1,7 +1,8 @@
 import { logoBase64 } from './email-logo.js';
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function accountLink(purpose, token, appUrl = process.env.PUBLIC_APP_URL) {
-  const base = new URL(appUrl);
+  const resolvedUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+  const base = new URL(resolvedUrl);
   if (base.username || base.password || !(base.protocol === 'https:' || (base.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(base.hostname)))) throw new Error('PUBLIC_APP_URL must use HTTPS (HTTP is allowed for localhost).');
   const url = new URL(purpose === 'verify' ? '/verify-email' : '/reset-password', base);
   // Fragments are not sent to web servers or in Referer headers.
